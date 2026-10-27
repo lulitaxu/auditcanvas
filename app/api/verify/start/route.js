@@ -1,4 +1,4 @@
-import { createChallenge, normalizeHostname } from '../../../../../src/lib/ownership.js';
+import { createChallenge, normalizeHostname } from '../../../../src/lib/ownership.js';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';

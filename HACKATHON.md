@@ -117,32 +117,96 @@ theft (HttpOnly governs script access; Secure governs transport).
   report) against the seeded demo target completes with report
   integrity ok and the engine-only auditor state shown.
 
+### Day 4-5 — Oct 28, 2026: chains, refutation, downloads, verification, canvas
+
+- **Exploit chains engine** (`src/lib/chains.js`): chain proposals arrive
+  inside the auditor pass (call 1 of 3) and are never trusted — the
+  server validates every finding/evidence ID and re-derives the
+  classification from per-chain-type evidence requirements in code. The
+  catalog has three types (cors-data-exposure,
+  plaintext-session-exposure, known-vuln-library-exposure). The spec's
+  corrected CORS example is enforced structurally: a CORS chain needs an
+  allowed/reflected untrusted origin AND credentials allowed AND a
+  sensitive response readable cross-origin; cookie flags satisfy none
+  of these and a flags-only proposal classifies Unproven. Supported
+  renders solid, Conditional renders dashed, Unproven is not rendered
+  as a path (Technical mode shows it as rejected reasoning). Structurally
+  invalid proposals (unknown IDs, unknown type) are rejected outright.
+  Without a model key the block reports its explicit not-run state; the
+  engine never fabricates chains.
+- **Refutation pass** (`src/lib/refutation.js`): separate adversarial
+  call site (call 2 of 3) fed only the claim + stored evidence. The
+  deterministic evidence assessment (per-check precondition registry)
+  alone decides the outcome: Survived refutation / Confidence reduced /
+  Not substantiated. A model argument can at most reduce confidence.
+  Scope = high-severity findings + Supported-chain nodes. Refutation
+  runs BEFORE final scoring in the pipeline: not-substantiated claims
+  stop driving Risk (finding stays in the report), confidence-reduced
+  findings lower the Confidence score. Report entries carry the four
+  spec fields per challenged finding. Without a key: explicit
+  "Refutation not run" state.
+- **Downloads** (`src/lib/downloads.js`): `auditcanvas-evidence.json`
+  (schemaVersion in every bundle; every finding resolves to evidence
+  inside the file) and `auditcanvas-fix-pack.zip` (dependency-free ZIP
+  writer; one suggested-patch file per finding, header carries finding
+  ID + evidence IDs + detected stack + conditions + placement; only
+  stack-applicable variants generated). Served from
+  `/api/scan/[id]/evidence` and `/api/scan/[id]/fix-pack`.
+- **DNS TXT ownership verification** (`src/lib/ownership.js`): token
+  bound to the exact hostname, 15-minute challenge at
+  `_auditcanvas.<host>`, DNS error taxonomy respected (a resolver error
+  is inconclusive, never "missing"). Verified hosts unlock the full
+  policy; verification state is stored on the scan session and travels
+  into the report and evidence bundle. Unverified targets keep the
+  restricted passive policy.
+- **Judge mode + canvas**: the first screen is Judge mode with NO URL
+  input (seeded demo + sample reports); scanning your own site is the
+  separate normal flow, with the DNS verification panel beside it. The
+  report view renders the evidence graph (Assets → Observations →
+  Findings → Fixes) as SVG with chain paths per the rendering rules,
+  click-a-finding evidence tracing, Owner/Technical modes, the three
+  deterministic scores with their formulas, and download buttons.
+- **Verified Day 4-5:** production build passes; fixture suite
+  **65/65 assertions** (44 Night-0 + 21 new: chain classification incl.
+  the corrected CORS example and unknown-ID rejection, refutation
+  outcomes and their Risk/Confidence interaction, downloads, ownership
+  lifecycle); live API smoke test (start → 8 steps → finalized report →
+  both downloads → verify endpoints) against the seeded demo target:
+  21 findings, Risk F/100, auditor engine-only, chains and refutation
+  in their explicit not-run states.
+
 ### Known stubs and open verifications (honest list)
 
 - **Meta model ID and structured-output support on the account are not
   yet verified.** The auditor reads both from env and fails cleanly;
   Night 0 deliberately does not assume a model ID. First task when the
   key is wired: one real auditor call end to end.
-- **Refutation and summary passes are call-site stubs** (explicit
-  `not-run` states) until the Day 4 pipeline build.
+- **Refutation and chains are fully wired** (validation, classification,
+  deterministic assessment, scoring interaction) but have only ever run
+  their not-run states: the first live exercise waits on the Meta key,
+  exactly like the auditor pass.
 - **CVE snapshot is a hand-seeded stub** (`src/lib/cve-snapshot.json`,
   version `stub-2026-10-28`) covering a few well-known library ranges
   for offline development and fixture tests. Entries must be verified
   against NVD and the snapshot replaced with a dated pull before any
   real report is published; the snapshot version travels in every
   report's reproducibility stamp with a stale warning after 90 days.
-- **DNS TXT ownership verification is not built** (later spec day);
-  until then only server-allowlisted demo hosts get the full policy.
 - Scan sessions are in-memory; report persistence, 7-day expiry, and
   one-click delete land with the report-lifecycle work.
-- Downloads (`auditcanvas-evidence.json`, `auditcanvas-fix-pack.zip`),
-  the visual canvas, and the diff view are later spec days.
+- The summary pass (call 3 of 3) remains a call-site stub: the fix pack
+  is generated deterministically so it exists in every report; only the
+  prose summary waits on the live auditor.
+- Scan diff + fix verification (rescan) and the preloaded real sample
+  reports are Day 6-7 work, still ahead.
 
 ## Next steps
 
 1. Wire the real Meta API key in env; verify the model ID and
-   structured outputs with one live auditor call.
-2. Auditor pass live, then the adversarial refutation pass.
-3. Canvas report view; evidence JSON + fix-pack downloads.
-4. Judge mode polish and the seeded sample-report set.
+   structured outputs with one live auditor call, then exercise chains
+   and refutation live for the first time.
+2. Scan diff + fix verification (rescan flow); preloaded real reports
+   for Judge mode (nyktos.tech, cliphaus.dev), labelled Saved result.
+3. Auditor evaluation suite (fabricated-evidence and false-positive
+   fixtures; precision gained / true findings retained).
+4. Report lifecycle: persistence, 7-day expiry, one-click delete.
 5. Hardening pass (budgets, cooldowns, quotas), rehearsal, submission.

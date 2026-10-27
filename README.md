@@ -64,8 +64,12 @@ deterministic engine-only report and carries that status explicitly.
 
 ```
 app/                     Next.js App Router UI + API routes
-  page.js, ScanClient.js   Judge-mode entry + stepwise scan UI
+  page.js, ScanClient.js   Judge mode (no URL input) + scan-your-own-site flow
+  ReportView.js            Evidence graph canvas, owner/technical modes
   api/scan/start|step|[id] Stepwise scan API (one check group per step)
+  api/scan/[id]/evidence   auditcanvas-evidence.json (versioned schema)
+  api/scan/[id]/fix-pack   auditcanvas-fix-pack.zip (suggested patches)
+  api/verify/start|check   DNS TXT ownership challenge
   api/demo-target/         Seeded deliberately-vulnerable demo target
 src/lib/
   evidence.js            Evidence schema, stable IDs, redaction, validators
@@ -77,6 +81,13 @@ src/lib/
   cve-snapshot.json      Versioned CVE snapshot (Night 0: hand-seeded stub)
   scoring.js             Deterministic Risk / Coverage / Confidence
   auditor.js             Muse Spark call sites (max 3/scan), report validator
+  chains.js              Exploit chains: server validation + classification
+  refutation.js          Adversarial pass + deterministic evidence assessment
+  pipeline.js            Finalize: auditor -> chains -> refutation -> rescore
+  downloads.js           Evidence bundle + fix-pack generation
+  zip.js                 Dependency-free ZIP writer/reader
+  ownership.js           DNS TXT challenges + verified-host state
+  graph.js               Evidence graph model for the canvas
   report.js              Report assembly + reproducibility stamp
   scanstore.js           In-memory scan sessions, cooldowns, quotas
 fixtures/server.mjs      Vulnerable / hardened / slow / garbage test origins
