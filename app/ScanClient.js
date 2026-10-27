@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import ReportView from './ReportView';
 
 const OUTCOME_LABEL = {
   pass: 'Pass',
@@ -9,24 +10,111 @@ const OUTCOME_LABEL = {
   'not-assessed': 'Not assessed',
 };
 
-function ResultRow({ r }) {
+function LiveRow({ r }) {
   return (
     <li>
       <div className="result-head">
         <span className={`chip ${r.outcome}`}>{OUTCOME_LABEL[r.outcome] || r.outcome}</span>
         {r.severity ? <span className="sev">{r.severity}</span> : null}
         <span className="result-title">{r.title}</span>
-        {r.inference ? <span className="sev" style={{ color: 'var(--inconclusive)' }}>inference</span> : null}
       </div>
       <div className="result-detail">{r.detail}</div>
-      {r.evidenceIds && r.evidenceIds.length ? (
-        <div className="evids">evidence: {r.evidenceIds.join(', ')}</div>
-      ) : null}
     </li>
   );
 }
 
+function VerifyPanel({ targetUrl }) {
+  const [challenge, setChallenge] = useState(null);
+  const [status, setStatus] = useState(null);
+  const [busy, setBusy] = useState(false);
+
+  let hostname = '';
+  try {
+    hostname = targetUrl ? new URL(targetUrl).hostname : '';
+  } catch { /* user is still typing */ }
+
+  async function start() {
+    setBusy(true);
+    setStatus(null);
+    try {
+      const res = await fetch('/api/verify/start', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ url: targetUrl }),
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error || 'Could not start verification.');
+      setChallenge(body);
+    } catch (e) {
+      setStatus(e.message || String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function check() {
+    setBusy(true);
+    try {
+      const res = await fetch('/api/verify/check', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ hostname }),
+      });
+      const body = await res.json();
+      if (body.status === 'verified') {
+        setStatus(`Verified. Scans of ${hostname} created from now on run the full check set, with the verification stored on the scan session.`);
+        setChallenge(null);
+      } else if (body.status === 'dns-error') {
+        setStatus(`DNS lookup did not complete (${body.dnsStatus}); that is inconclusive, not a missing record. Wait and check again.`);
+      } else if (body.status === 'not-found') {
+        setStatus('The TXT record was not found yet (or does not match). DNS can take a few minutes to propagate.');
+      } else if (body.status === 'expired') {
+        setStatus('The challenge token expired (15 minutes). Start again for a fresh token.');
+        setChallenge(null);
+      } else if (body.status === 'no-challenge') {
+        setStatus('No active challenge for this host. Start verification first.');
+      } else {
+        setStatus(`Status: ${body.status}`);
+      }
+    } catch (e) {
+      setStatus(e.message || String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="verify">
+      <h3>Verify ownership (DNS TXT)</h3>
+      <p className="lede">
+        One method, done properly: a short-lived token bound to the exact hostname.
+        Verified hosts unlock the full check set; unverified targets always run the
+        restricted passive policy, attestation or not.
+      </p>
+      <div className="btn-row">
+        <button className="btn secondary" onClick={start} disabled={busy || !hostname} type="button">
+          Start verification{hostname ? ` for ${hostname}` : ''}
+        </button>
+        {challenge ? (
+          <button className="btn" onClick={check} disabled={busy} type="button">
+            Check the record
+          </button>
+        ) : null}
+      </div>
+      {challenge ? (
+        <div className="stamp">
+          Add a <code>TXT</code> record at <code>{challenge.recordName}</code> with the exact value{' '}
+          <code>{challenge.recordValue}</code> — it expires at{' '}
+          {new Date(challenge.expiresAt).toLocaleString()}.
+        </div>
+      ) : null}
+      {status ? <p className="policy-line">{status}</p> : null}
+    </div>
+  );
+}
+
 export default function ScanClient() {
+  const [mode, setMode] = useState('judge');
   const [url, setUrl] = useState('');
   const [attested, setAttested] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -88,6 +176,43 @@ export default function ScanClient() {
     if (url.trim()) runScan(url.trim(), attested);
   }
 
+  const progress = scan ? (
+    <section className="block">
+      <h2>
+        {report ? 'Report' : 'Scanning'}: {scan.target}
+      </h2>
+      <p className="policy-line">
+        Policy <strong>{scan.scanPolicy}</strong> · authorization{' '}
+        <strong>{scan.authorizationState}</strong> · budget{' '}
+        <strong>{scan.policy ? scan.policy.budget : '?'} requests</strong> ·{' '}
+        {scan.policy && scan.policy.probes ? 'probes on' : 'probes off'}
+        {scan.verification ? ' · ownership verified by DNS TXT' : ''}
+      </p>
+      <ul className="groups">
+        {scan.groups.map((g) => (
+          <li key={g.id}>
+            <span>{g.name}</span>
+            <span className={`gstatus ${groupStatus[g.id] || ''}`}>
+              {groupStatus[g.id] || 'queued'}
+            </span>
+          </li>
+        ))}
+      </ul>
+      {report ? (
+        <ReportView report={report} scanId={scan.scanId} />
+      ) : (
+        <>
+          <h3>Checks so far</h3>
+          <ul className="results">
+            {results.map((r) => (
+              <LiveRow key={r.checkId} r={r} />
+            ))}
+          </ul>
+        </>
+      )}
+    </section>
+  ) : null;
+
   return (
     <main>
       <header className="masthead">
@@ -100,17 +225,33 @@ export default function ScanClient() {
           order a person can act on. The scanner decides what exists. The model decides
           what it means.
         </p>
-        <div className="btn-row">
-          <button className="btn" onClick={runDemo} disabled={busy}>
-            Run the seeded demo
-          </button>
-          <button className="btn secondary" onClick={() => setShowSamples((s) => !s)}>
-            Explore sample reports
-          </button>
-        </div>
+        {mode === 'judge' ? (
+          <>
+            <div className="btn-row">
+              <button className="btn" onClick={runDemo} disabled={busy}>
+                Run the seeded demo
+              </button>
+              <button className="btn secondary" onClick={() => setShowSamples((s) => !s)}>
+                Explore sample reports
+              </button>
+            </div>
+            <p className="policy-line">
+              Judge mode has no URL input: the demo target is fixed and ours.{' '}
+              <button className="textbtn" onClick={() => setMode('scan')}>
+                Scan a site you own instead
+              </button>
+            </p>
+          </>
+        ) : (
+          <p className="policy-line">
+            <button className="textbtn" onClick={() => setMode('judge')}>
+              Back to Judge mode
+            </button>
+          </p>
+        )}
       </header>
 
-      {showSamples ? (
+      {mode === 'judge' && showSamples ? (
         <section className="block">
           <h2>Sample reports</h2>
           <p className="lede">
@@ -122,43 +263,46 @@ export default function ScanClient() {
         </section>
       ) : null}
 
-      <section className="block">
-        <h2>Scan a site</h2>
-        <p className="lede">
-          Unverified targets are scanned with a restricted, passive policy: no CORS
-          probes, no redirect probes, a small request budget. The full check set runs
-          only on targets verified through DNS or on the seeded demo. Scans are
-          non-destructive and read-only.
-        </p>
-        <form className="scan" onSubmit={onSubmit}>
-          <div className="row">
-            <input
-              type="url"
-              required
-              placeholder="https://example.com"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              disabled={busy}
-            />
-            <button className="btn" type="submit" disabled={busy}>
-              Start scan
-            </button>
-          </div>
-          <label className="attest">
-            <input
-              type="checkbox"
-              checked={attested}
-              onChange={(e) => setAttested(e.target.checked)}
-              disabled={busy}
-            />
-            <span>
-              I own this site, or I have written authorization to security-test it. (Your
-              attestation is logged, but the restricted policy applies either way until
-              ownership is verified.)
-            </span>
-          </label>
-        </form>
-      </section>
+      {mode === 'scan' ? (
+        <section className="block">
+          <h2>Scan a site</h2>
+          <p className="lede">
+            Unverified targets are scanned with a restricted, passive policy: no CORS
+            probes, no redirect probes, a small request budget. The full check set runs
+            only on targets verified through DNS or on the seeded demo. Scans are
+            non-destructive and read-only.
+          </p>
+          <form className="scan" onSubmit={onSubmit}>
+            <div className="row">
+              <input
+                type="url"
+                required
+                placeholder="https://example.com"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                disabled={busy}
+              />
+              <button className="btn" type="submit" disabled={busy}>
+                Start scan
+              </button>
+            </div>
+            <label className="attest">
+              <input
+                type="checkbox"
+                checked={attested}
+                onChange={(e) => setAttested(e.target.checked)}
+                disabled={busy}
+              />
+              <span>
+                I own this site, or I have written authorization to security-test it. (Your
+                attestation is logged, but the restricted policy applies either way until
+                ownership is verified.)
+              </span>
+            </label>
+          </form>
+          <VerifyPanel targetUrl={url} />
+        </section>
+      ) : null}
 
       {error ? (
         <section className="block">
@@ -166,100 +310,7 @@ export default function ScanClient() {
         </section>
       ) : null}
 
-      {scan ? (
-        <section className="block">
-          <h2>
-            {report ? 'Report' : 'Scanning'}: {scan.target}
-          </h2>
-          <p className="policy-line">
-            Policy <strong>{scan.scanPolicy}</strong> · authorization{' '}
-            <strong>{scan.authorizationState}</strong> · budget{' '}
-            <strong>{scan.policy ? scan.policy.budget : '?'} requests</strong> ·{' '}
-            {scan.policy && scan.policy.probes ? 'probes on' : 'probes off'}
-          </p>
-          <ul className="groups">
-            {scan.groups.map((g) => (
-              <li key={g.id}>
-                <span>{g.name}</span>
-                <span className={`gstatus ${groupStatus[g.id] || ''}`}>
-                  {groupStatus[g.id] || 'queued'}
-                </span>
-              </li>
-            ))}
-          </ul>
-
-          {report ? (
-            <>
-              <div className="scores">
-                <div className="score">
-                  <div className="k">Risk</div>
-                  <div className="v">
-                    {report.scores.risk.grade} · {report.scores.risk.score}
-                  </div>
-                  <div className="n">
-                    {report.scores.risk.label}
-                    {report.scores.risk.cappedByHigh ? ' · capped by a confirmed high' : ''}
-                  </div>
-                </div>
-                <div className="score">
-                  <div className="k">Coverage</div>
-                  <div className="v">{Math.round(report.scores.coverage.ratio * 100)}%</div>
-                  <div className="n">
-                    {report.scores.coverage.verdicts} of {report.scores.coverage.attempted}{' '}
-                    attempted checks reached a verdict
-                  </div>
-                </div>
-                <div className="score">
-                  <div className="k">Confidence</div>
-                  <div className="v">{Math.round(report.scores.confidence.ratio * 100)}%</div>
-                  <div className="n">
-                    {report.scores.confidence.directFindings} findings on direct evidence,{' '}
-                    {report.scores.confidence.inferredFindings} on inference
-                  </div>
-                </div>
-              </div>
-
-              {report.auditor ? (
-                <p className="policy-line">
-                  Auditor: <strong>{report.auditor.status}</strong>
-                  {report.auditor.reason ? ` — ${report.auditor.reason}` : ''}
-                </p>
-              ) : null}
-
-              {report.fixFirst && report.fixFirst.length ? (
-                <>
-                  <h3>Fix first</h3>
-                  <ol className="fixfirst">
-                    {report.fixFirst.map((f) => (
-                      <li key={f.findingId}>
-                        <strong>{f.severity}</strong> — {f.title}
-                      </li>
-                    ))}
-                  </ol>
-                </>
-              ) : null}
-
-              <h3>Reproducibility</h3>
-              <div className="stamp">
-                scanner <code>{report.stamp.scannerVersion}</code> · rules{' '}
-                <code>{report.stamp.rulesVersion}</code> · model{' '}
-                <code>{report.stamp.modelId}</code> · policy{' '}
-                <code>{report.stamp.scanPolicy}</code> · CVE snapshot{' '}
-                <code>{report.stamp.dataSnapshots.cve.snapshotVersion}</code>
-                {report.stamp.dataSnapshots.cve.stale ? ' (stale — treat CVE coverage as dated)' : ''} ·{' '}
-                {new Date(report.stamp.timestamp).toLocaleString()}
-              </div>
-            </>
-          ) : null}
-
-          <h3>Checks</h3>
-          <ul className="results">
-            {results.map((r) => (
-              <ResultRow key={r.checkId} r={r} />
-            ))}
-          </ul>
-        </section>
-      ) : null}
+      {progress}
 
       <footer className="colophon">
         AuditCanvas runs eight deterministic check groups (headers, TLS, cookies, CORS,

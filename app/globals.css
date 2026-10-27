@@ -101,3 +101,68 @@ ol.fixfirst { margin: 8px 0 0; padding-left: 22px; }
 ol.fixfirst li { padding: 4px 0; }
 
 footer.colophon { margin-top: 44px; border-top: 1px solid var(--line); padding-top: 16px; font-size: 13.5px; color: var(--muted); }
+
+/* --- Day 4-5: judge/scan modes, verification, report view, canvas --- */
+
+.textbtn {
+  appearance: none; border: none; background: none; font: inherit; color: var(--accent);
+  font-weight: 600; cursor: pointer; padding: 0; text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.verify { border: 1px solid var(--line); background: #fffdf8; padding: 16px 18px; margin-top: 22px; }
+.verify h3 { margin: 0 0 6px; font-family: Georgia, serif; font-size: 19px; }
+.verify .stamp { margin-top: 12px; }
+
+.mode-toggle { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 18px 0 4px; }
+.mode-toggle > button {
+  appearance: none; font: inherit; font-weight: 600; padding: 7px 14px; cursor: pointer;
+  border: 2px solid var(--ink); background: transparent; color: var(--ink); border-radius: 2px;
+}
+.mode-toggle > button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+.dl-row { display: inline-flex; gap: 10px; margin-left: auto; flex-wrap: wrap; }
+.dl-row .btn { text-decoration: none; display: inline-block; font-size: 14px; padding: 8px 12px; }
+
+.formula { font-size: 12px; color: var(--muted); margin-top: 8px; border-top: 1px dashed var(--line); padding-top: 8px; }
+
+.notice {
+  border: 1.5px solid var(--inconclusive); color: var(--ink); background: #faf3dd;
+  padding: 10px 14px; font-size: 14.5px; margin: 10px 0;
+}
+
+.chain-card { border: 1px solid var(--line); background: #fffdf8; padding: 12px 16px; margin: 10px 0; }
+.chain-card.rejected { background: var(--paper-2); }
+.chip.chain-supported { color: var(--accent); }
+.chip.chain-conditional { color: var(--inconclusive); border-style: dashed; }
+.chip.refute-survived-refutation { color: var(--pass); }
+.chip.refute-confidence-reduced { color: var(--inconclusive); }
+.chip.refute-not-substantiated { color: var(--accent); }
+.chip.refute-chip { color: var(--muted); border-color: var(--line); text-transform: none; letter-spacing: 0; }
+ul.preconds { list-style: none; margin: 8px 0; padding: 0; font-size: 13.5px; color: var(--muted); }
+ul.preconds code { font-family: ui-monospace, Menlo, monospace; font-size: 12.5px; color: var(--ink); }
+
+.refute { border: 1px solid var(--line); background: #fffdf8; padding: 12px 16px; margin: 10px 0; }
+.refute dl { display: grid; grid-template-columns: 150px 1fr; gap: 4px 14px; margin: 10px 0 2px; font-size: 14.5px; }
+.refute dt { font-weight: 700; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); padding-top: 2px; }
+.refute dd { margin: 0; color: var(--ink); }
+
+/* Evidence graph canvas */
+.graph-wrap { border: 2px solid var(--ink); background: #fffdf8; overflow-x: auto; margin: 12px 0 6px; }
+svg.graph { display: block; min-width: 700px; width: 100%; height: auto; }
+svg.graph .edge { stroke: var(--line); stroke-width: 1.5; }
+svg.graph .edge.traced { stroke: var(--ink); stroke-width: 2; }
+svg.graph .edge.chain-supported { stroke: var(--accent); stroke-width: 3; }
+svg.graph .edge.chain-conditional { stroke: var(--inconclusive); stroke-width: 2.5; stroke-dasharray: 7 5; }
+.gnode rect { fill: var(--paper); stroke: var(--ink); stroke-width: 1.25; }
+.gnode.finding { cursor: pointer; }
+.gnode.finding rect { stroke-width: 1.75; }
+.gnode.chain-supported rect { stroke: var(--accent); stroke-width: 3; }
+.gnode.chain-conditional rect { stroke: var(--inconclusive); stroke-width: 2.5; stroke-dasharray: 7 5; }
+.gnode.selected rect { fill: var(--paper-2); stroke-width: 3; }
+.gtext-1 { font-family: ui-monospace, Menlo, monospace; font-size: 11.5px; font-weight: 700; fill: var(--ink); }
+.gtext-2 { font-size: 10.5px; fill: var(--muted); }
+.graph-legend { display: flex; gap: 22px; flex-wrap: wrap; font-size: 13px; color: var(--muted); margin: 4px 0 2px; }
+.graph-legend .swatch { display: inline-block; width: 26px; border-top: 3px solid var(--accent); vertical-align: middle; margin-right: 6px; }
+.graph-legend .swatch.dashed { border-top: 3px dashed var(--inconclusive); }
+.graph-layers { position: relative; height: 18px; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+.graph-layers span { position: absolute; }
