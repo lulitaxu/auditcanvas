@@ -7,6 +7,7 @@
 import { randomBytes } from 'node:crypto';
 import { assertUrlAllowed } from './safefetch.js';
 import { policyForTarget, createScanContext, POLICIES } from './context.js';
+import { verificationForHost } from './ownership.js';
 import { GROUPS } from './scanner/index.js';
 
 const sessions = new Map();
@@ -44,7 +45,14 @@ export function checkScanAllowed(targetUrl, ip) {
 export function createScan({ url, attested = false, ip = 'unknown' }) {
   const parsed = assertUrlAllowed(url); // throws SafeFetchError on bad input
   const target = parsed.toString();
-  const { policy, authorizationState, allowPrivate } = policyForTarget(parsed, { attested });
+  // Ownership verification state is captured WITH the session at
+  // creation: a completed DNS TXT verification for this exact hostname
+  // unlocks the full policy; anything else stays restricted.
+  const verification = verificationForHost(parsed.hostname);
+  const { policy, authorizationState, allowPrivate } = policyForTarget(parsed, {
+    attested,
+    verified: Boolean(verification),
+  });
 
   const id = randomBytes(18).toString('base64url');
   const ctx = createScanContext({
@@ -60,6 +68,7 @@ export function createScan({ url, attested = false, ip = 'unknown' }) {
     target,
     policyName: policy.name,
     authorizationState,
+    verification: verification || null,
     attested: Boolean(attested),
     status: 'running',
     createdAt: now,
@@ -73,6 +82,9 @@ export function createScan({ url, attested = false, ip = 'unknown' }) {
         event: 'scan-created',
         target,
         authorizationState,
+        verification: verification
+          ? { method: verification.method, hostname: verification.hostname, verifiedAt: verification.verifiedAt }
+          : null,
         scanPolicy: policy.name,
         ip,
       },
@@ -105,6 +117,7 @@ export function scanSummary(session) {
     status: session.status,
     scanPolicy: session.policyName,
     authorizationState: session.authorizationState,
+    verification: session.verification || null,
     groupStatus: session.groupStatus,
     groups: GROUPS.map((g) => ({ id: g.id, name: g.name })),
     policy: POLICIES[session.policyName],

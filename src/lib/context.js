@@ -2,9 +2,8 @@
 //
 // SPEC.md: "Restricted by default. Unverified targets get a passive-only
 // scan policy with small budgets, whatever the user attests." Verified
-// targets (DNS TXT, one method) and our own allowlisted demo hosts get
-// the full check set. The DNS TXT flow lands after Night 0; until then
-// only server-allowlisted demo hosts resolve to the full policy.
+// targets (DNS TXT, the ONE method — ownership.js) and our own
+// allowlisted demo hosts get the full check set.
 import { createEvidenceStore, redactUrl } from './evidence.js';
 import { safeFetch, SafeFetchError } from './safefetch.js';
 import { resolveTxt } from './dnsutil.js';
@@ -37,13 +36,19 @@ export function demoHosts() {
     .filter(Boolean);
 }
 
-// authorizationState: 'verified' (allowlisted demo host for now; DNS TXT
-// verified later) or 'attested' / 'unattested' for user targets, which
-// always run restricted until verification exists.
-export function policyForTarget(url, { attested = false } = {}) {
+// authorizationState: 'verified' (allowlisted demo host, or a hostname
+// with a completed DNS TXT verification — the token is bound to the
+// exact hostname, ownership.js) or 'attested' / 'unattested' for user
+// targets, which always run restricted until verified. Note allowPrivate
+// stays false for DNS-verified hosts: verification unlocks the check
+// set, never the SSRF address rules.
+export function policyForTarget(url, { attested = false, verified = false } = {}) {
   const host = url.hostname.toLowerCase();
   if (demoHosts().includes(host)) {
     return { policy: POLICIES.full, authorizationState: 'verified', allowPrivate: true };
+  }
+  if (verified) {
+    return { policy: POLICIES.full, authorizationState: 'verified', allowPrivate: false };
   }
   return {
     policy: POLICIES.restricted,
