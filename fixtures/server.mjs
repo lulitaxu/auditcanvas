@@ -167,4 +167,31 @@ if (isMain) {
     console.log('  garbage tcp       http://127.0.0.4/');
     if (process.env.AC_CERT_DIR) console.log('  vulnerable https  https://localhost/ (fixture CA from AC_CERT_DIR)');
   });
+
+  // Standalone-only control for the demo recording (DEMO-SCRIPT.md):
+  // flipping the vulnerable origin to its hardened behavior mid-session
+  // is what makes the fix-and-rescan segment recordable — scan the
+  // vulnerable fixture in the app, apply the fix pack's changes by
+  // flipping, rescan, and the diff verifies from fresh evidence. The
+  // verify suite drives the same setter in-process; this HTTP control
+  // (on a non-scanner port, loopback only) exists only in main mode.
+  const controlPort = Number(process.env.AC_FIXTURE_CONTROL_PORT || 8911);
+  http
+    .createServer((req, res) => {
+      if (req.url === '/flip') {
+        setVulnerableOriginHardened(true);
+        res.end('vulnerable origin now serves hardened responses\n');
+      } else if (req.url === '/reset') {
+        setVulnerableOriginHardened(false);
+        res.end('vulnerable origin restored\n');
+      } else if (req.url === '/state') {
+        res.end(`hardened=${vulnerableOriginHardened}\n`);
+      } else {
+        res.statusCode = 404;
+        res.end('control endpoints: /flip /reset /state\n');
+      }
+    })
+    .listen(controlPort, '127.0.0.1', () => {
+      console.log(`  fixture control   http://127.0.0.1:${controlPort}/flip (demo recording)`);
+    });
 }
