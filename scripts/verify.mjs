@@ -47,10 +47,16 @@ if (!process.env.AC_VERIFY_CHILD) {
 
 // ---------------------------------------------------------------- child
 const { validateAddressSet } = await import('../src/lib/iputil.js');
-const { parseSetCookieFlags, redactString, unresolvedEvidenceIds } = await import('../src/lib/evidence.js');
+const { parseSetCookieFlags, redactString, unresolvedEvidenceIds, EVIDENCE_SCHEMA_VERSION } = await import('../src/lib/evidence.js');
 const { computeScores } = await import('../src/lib/scoring.js');
-const { createScanContext, POLICIES } = await import('../src/lib/context.js');
+const { createScanContext, POLICIES, policyForTarget } = await import('../src/lib/context.js');
 const { runAllGroups, runGroup } = await import('../src/lib/scanner/index.js');
+const { buildChains, deriveChains } = await import('../src/lib/chains.js');
+const { applyRefutation, refutationScope } = await import('../src/lib/refutation.js');
+const { buildEvidenceBundle, buildFixPack, EVIDENCE_FILENAME, FIX_PACK_FILENAME } = await import('../src/lib/downloads.js');
+const { listZipEntries, readZipEntry } = await import('../src/lib/zip.js');
+const ownership = await import('../src/lib/ownership.js');
+const { createScan } = await import('../src/lib/scanstore.js');
 const fixtures = await import('../fixtures/server.mjs');
 
 const results = [];
@@ -191,6 +197,142 @@ if (!process.env.AC_NO_HTTPS) {
   });
   const sh = await runGroup(stx, 'headers');
   check('timeout: slow target makes headers Inconclusive (not Pass)', sh.length === 1 && sh[0].outcome === 'inconclusive', JSON.stringify(sh));
+}
+
+// --- Day 4/5: chains, refutation, downloads, ownership ---
+// Synthetic reports in the exact shapes the scanner produces.
+function httpEv(id, data) {
+  return { id, kind: 'http-response', target: 'https://shop.example/', at: '2026-10-28T00:00:00.000Z', data };
+}
+function corsReport({ withCreds = true, withCookies = true } = {}) {
+  const headers = { 'access-control-allow-origin': 'https://ac-probe.invalid', 'content-type': 'text/html; charset=utf-8' };
+  if (withCreds) headers['access-control-allow-credentials'] = 'true';
+  const ev = httpEv('ev-0001', {
+    status: 200, finalUrl: 'https://shop.example/', redirectCount: 0, headers, headerNames: Object.keys(headers),
+    setCookies: withCookies ? [{ name: 'sessionid', secure: true, httpOnly: true, sameSite: 'lax', path: '/', domain: null, hasExpires: false, hasMaxAge: false }] : [],
+    bodyBytes: 512, truncated: false,
+  });
+  const finding = {
+    checkId: 'cors.credentialed-exposure', findingId: 'f-cors-credentialed-exposure', group: 'cors',
+    outcome: 'finding', severity: 'high', title: 'CORS allows credentialed reads from untrusted origins',
+    detail: 'Reflected origin with credentials allowed.', evidenceIds: ['ev-0001'], inference: false,
+  };
+  return { target: 'https://shop.example/', results: [finding], evidence: [ev] };
+}
+const corsProposal = (extraNodes = []) => ({
+  type: 'cors-data-exposure',
+  title: 'Credentialed CORS exposes account data to any site',
+  claimedClassification: 'supported',
+  nodes: [{ findingId: 'f-cors-credentialed-exposure', evidenceIds: ['ev-0001'] }, ...extraNodes],
+  edges: [],
+});
+
+{
+  // CHAINS — the corrected CORS example, all three classifications.
+  const supported = buildChains([corsProposal()], corsReport({}));
+  check('chains: fully-evidenced CORS chain is Supported and rendered', supported.chains.length === 1 && supported.chains[0].classification === 'supported', JSON.stringify(supported.chains[0]?.preconditions));
+
+  const noCreds = buildChains([corsProposal()], corsReport({ withCreds: false }));
+  check('chains: CORS chain without credentials evidence is Unproven and NOT rendered', noCreds.chains.length === 0 && noCreds.unproven.length === 1 && /credentials-allowed/.test(noCreds.unproven[0].reason), JSON.stringify(noCreds.unproven[0]?.reason));
+
+  const conditional = buildChains([corsProposal()], corsReport({ withCookies: false }));
+  check('chains: CORS chain with unproven response sensitivity is Conditional (rendered, dashed)', conditional.chains.length === 1 && conditional.chains[0].classification === 'conditional');
+
+  // Cookie flags alone never prove cross-origin exposure (spec correction):
+  // a report whose only evidence is insecure cookie flags gives the chain
+  // no CORS precondition at all.
+  const cookieReport = corsReport({});
+  cookieReport.results = [{
+    checkId: 'cookies.secure-missing', findingId: 'f-cookies-secure-missing', group: 'cookies',
+    outcome: 'finding', severity: 'low', title: 'Cookies without Secure', detail: 'x', evidenceIds: ['ev-0001'], inference: false,
+  }];
+  cookieReport.evidence = [httpEv('ev-0001', {
+    status: 200, finalUrl: 'https://shop.example/', redirectCount: 0, headers: {}, headerNames: [],
+    setCookies: [{ name: 'sessionid', secure: false, httpOnly: false, sameSite: null, path: '/', domain: null, hasExpires: false, hasMaxAge: false }],
+    bodyBytes: 100, truncated: false,
+  })];
+  const cookieChain = buildChains(
+    [{ type: 'cors-data-exposure', title: 'Session theft via cookie flags', nodes: [{ findingId: 'f-cookies-secure-missing', evidenceIds: ['ev-0001'] }], edges: [] }],
+    cookieReport
+  );
+  check('chains: cookie flags alone can never support a CORS chain (Unproven)', cookieChain.chains.length === 0 && cookieChain.unproven.length === 1);
+
+  const badEv = buildChains([{ ...corsProposal(), nodes: [{ findingId: 'f-cors-credentialed-exposure', evidenceIds: ['ev-9999'] }] }], corsReport({}));
+  check('chains: proposal citing an unknown evidence ID is rejected outright', badEv.chains.length === 0 && badEv.invalid.length === 1 && /unknown evidenceId/.test(badEv.invalid[0].problems.join(' ')), JSON.stringify(badEv.invalid));
+  const badFinding = buildChains([{ ...corsProposal(), nodes: [{ findingId: 'f-nope', evidenceIds: [] }] }], corsReport({}));
+  check('chains: proposal citing an unknown finding ID is rejected outright', badFinding.invalid.length === 1 && /unknown findingId/.test(badFinding.invalid[0].problems.join(' ')));
+  const badType = buildChains([{ ...corsProposal(), type: 'session-theft-via-cookie-flags' }], corsReport({}));
+  check('chains: unknown chain type is rejected outright', badType.invalid.length === 1 && /unknown chain type/.test(badType.invalid[0].problems.join(' ')));
+  const notRun = deriveChains(corsReport({}), null, { configured: false });
+  check('chains: without a configured model the state is explicit not-run, zero chains', notRun.status === 'not-run' && notRun.chains.length === 0);
+
+  // REFUTATION — scope, outcomes, and the Risk interaction.
+  const lowFinding = {
+    checkId: 'cookies.secure-missing', findingId: 'f-cookies-secure-missing', group: 'cookies',
+    outcome: 'finding', severity: 'low', title: 'Cookies without Secure', detail: 'x', evidenceIds: ['ev-0001'], inference: false,
+  };
+  const scopedReport = corsReport({});
+  scopedReport.results.push(lowFinding);
+  const scopedChains = buildChains([corsProposal([{ findingId: 'f-cookies-secure-missing', evidenceIds: ['ev-0001'] }])], scopedReport);
+  check('refutation scope: high findings plus Supported-chain nodes only', refutationScope(scopedReport, scopedChains).map((f) => f.findingId).sort().join(',') === 'f-cookies-secure-missing,f-cors-credentialed-exposure', JSON.stringify(refutationScope(scopedReport, scopedChains).map((f) => f.findingId)));
+  check('refutation scope: a low finding outside any chain is out of scope', refutationScope(scopedReport, buildChains([], scopedReport)).map((f) => f.findingId).join(',') === 'f-cors-credentialed-exposure');
+
+  const survived = applyRefutation(corsReport({}), { chains: [] }, { 'f-cors-credentialed-exposure': 'The strongest counterargument imaginable: the probe origin is contrived and no real session was read.' });
+  check('refutation: complete evidence survives even a strong counterargument', survived.length === 1 && survived[0].outcome === 'survived-refutation' && survived[0].outcomeLabel === 'Survived refutation', JSON.stringify(survived[0]?.outcome));
+
+  const weakReport = corsReport({ withCreds: false });
+  const notSub = applyRefutation(weakReport, { chains: [] }, { 'f-cors-credentialed-exposure': 'Credentials are not actually allowed.' });
+  check('refutation: absent required precondition is Not substantiated (deterministic, not the model)', notSub.length === 1 && notSub[0].outcome === 'not-substantiated');
+  const rescored = structuredClone(weakReport.results);
+  rescored[0].refutation = { outcome: notSub[0].outcome };
+  const subScores = computeScores(rescored);
+  check('refutation: not-substantiated finding stops driving Risk but stays in the report', subScores.risk.score === 0 && subScores.counts.findings === 1 && subScores.counts.confirmedFindings === 0, JSON.stringify(subScores.risk));
+
+  const truncReport = corsReport({});
+  truncReport.evidence[0].data.truncated = true;
+  const reduced = applyRefutation(truncReport, { chains: [] }, { 'f-cors-credentialed-exposure': 'The evidence was cut off mid-response.' });
+  check('refutation: a confirmed limitation reduces confidence, never severity', reduced.length === 1 && reduced[0].outcome === 'confidence-reduced');
+  const redScored = structuredClone(truncReport.results);
+  redScored[0].refutation = { outcome: reduced[0].outcome };
+  check('refutation: confidence-reduced lowers the Confidence score', computeScores(redScored).confidence.ratio === 0 && computeScores(truncReport.results).confidence.ratio === 1);
+
+  // DOWNLOADS — versioned evidence bundle + fix pack contents.
+  const dlReport = corsReport({});
+  dlReport.scanId = 'scan-test';
+  dlReport.authorizationState = 'verified';
+  dlReport.scanPolicy = 'full';
+  dlReport.status = 'complete';
+  dlReport.startedAt = '2026-10-28T00:00:00.000Z';
+  dlReport.findings = dlReport.results;
+  dlReport.scores = computeScores(dlReport.results);
+  dlReport.stamp = { scannerVersion: '0.1.0' };
+  dlReport.integrity = { unresolvedEvidenceIds: [], ok: true };
+  dlReport.auditLog = [];
+  const bundle = buildEvidenceBundle(dlReport);
+  const roundTripped = JSON.parse(JSON.stringify(bundle));
+  check('downloads: evidence bundle parses and carries the schema version', roundTripped.schemaVersion === EVIDENCE_SCHEMA_VERSION && EVIDENCE_FILENAME === 'auditcanvas-evidence.json' && unresolvedEvidenceIds(roundTripped.results, roundTripped.evidence).length === 0);
+  const zip = buildFixPack(dlReport);
+  const names = listZipEntries(zip);
+  const fixText = readZipEntry(zip, 'fixes/f-cors-credentialed-exposure.txt') || '';
+  check('downloads: fix pack zip holds a per-finding file with finding ID, evidence IDs and the suggested-patch label',
+    FIX_PACK_FILENAME === 'auditcanvas-fix-pack.zip' && names.includes('fixes/f-cors-credentialed-exposure.txt')
+    && fixText.includes('# Finding: f-cors-credentialed-exposure') && fixText.includes('ev-0001') && fixText.includes('SUGGESTED PATCH'),
+    JSON.stringify(names));
+
+  // OWNERSHIP — DNS TXT challenge lifecycle + policy unlock.
+  const ch = ownership.createChallenge('verify-fixture.test');
+  const goodDns = async (name) => ({ status: 'ok', records: name === ch.recordName ? [ch.recordValue] : [] });
+  const verifiedRes = await ownership.checkChallenge('verify-fixture.test', { dnsTxtFn: goodDns });
+  check('ownership: matching TXT record verifies the exact hostname', verifiedRes.status === 'verified' && ownership.isVerifiedHost('verify-fixture.test'), JSON.stringify(verifiedRes));
+  const verifiedSession = createScan({ url: 'https://verify-fixture.test/', ip: 'verify-test' });
+  check('ownership: verified host scans get the full policy with state on the session',
+    verifiedSession.policyName === 'full' && verifiedSession.authorizationState === 'verified' && verifiedSession.verification?.hostname === 'verify-fixture.test',
+    JSON.stringify({ p: verifiedSession.policyName, a: verifiedSession.authorizationState }));
+  const ch2 = ownership.createChallenge('verify-miss.test');
+  const missRes = await ownership.checkChallenge('verify-miss.test', { dnsTxtFn: async () => ({ status: 'ok', records: ['auditcanvas-verify=wrong-token'] }) });
+  check('ownership: a non-matching TXT record does not verify', missRes.status === 'not-found' && !ownership.isVerifiedHost('verify-miss.test'));
+  const restrictedSession = createScan({ url: 'https://unverified-fixture.test/', ip: 'verify-test' });
+  check('ownership: unverified targets keep the restricted passive policy', restrictedSession.policyName === 'restricted' && restrictedSession.authorizationState === 'unattested' && policyForTarget(new URL('https://unverified-fixture.test/'), {}).policy.name === 'restricted');
 }
 
 for (const s of servers) {
