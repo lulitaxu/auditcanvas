@@ -46,7 +46,13 @@ export function computeScores(results) {
   const verdicts = results.filter((r) => r.outcome === 'pass' || r.outcome === 'finding');
   const coverage = attempted.length ? verdicts.length / attempted.length : 0;
 
-  const direct = findings.filter((r) => !r.inference).length;
+  // A finding is "direct" when it rests on direct observation AND the
+  // refutation pass did not reduce its confidence. Inference-based
+  // detections and refutation-reduced findings both lower Confidence;
+  // neither changes severity (spec: refutation outcomes).
+  const direct = findings.filter(
+    (r) => !r.inference && !(r.refutation && r.refutation.outcome === 'confidence-reduced')
+  ).length;
   const confidence = findings.length ? direct / findings.length : 1;
 
   return {
@@ -67,12 +73,16 @@ export function computeScores(results) {
       attempted: attempted.length,
       inconclusive: results.filter((r) => r.outcome === 'inconclusive').length,
       notAssessed: results.filter((r) => r.outcome === 'not-assessed').length,
+      formula:
+        'checks that reached a verdict (Pass or Finding) / checks attempted. Inconclusive and Not assessed count as attempted but never as verdicts.',
     },
     confidence: {
       ratio: Math.round(confidence * 100) / 100,
       directFindings: direct,
       inferredFindings: findings.length - direct,
       totalFindings: findings.length,
+      formula:
+        'findings backed by direct evidence / all findings. A finding is not direct when its detection rests on inference, or when the refutation pass reduced its confidence.',
     },
     counts: {
       pass: results.filter((r) => r.outcome === 'pass').length,
