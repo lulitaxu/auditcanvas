@@ -32,7 +32,7 @@ export function auditorConfig(env = process.env) {
 // against a chat-completions shape with a JSON-parse fallback; the exact
 // endpoint/response_format support must be verified against the account
 // on Night 0 before this is exercised live (see HACKATHON.md).
-async function callModel(config, { system, user }, { timeoutMs = 20000 } = {}) {
+export async function callModel(config, { system, user }, { timeoutMs = 20000 } = {}) {
   const { default: fetchFn } = { default: globalThis.fetch };
   let lastErr = null;
   for (let attempt = 0; attempt < 2; attempt++) {
@@ -98,16 +98,21 @@ const NOT_CONFIGURED = {
   reason: 'META_API_KEY / META_MODEL_ID are not set; report is engine-only (deterministic).',
 };
 
-// Pass 1 of 3: impact, prioritization, explanations, fix drafts.
+// Pass 1 of 3: impact, prioritization, explanations, fix drafts — and
+// exploit-chain proposals. Chain proposals are NOT trusted: chains.js
+// validates every ID and re-derives the classification from per-chain-type
+// evidence requirements in code; the model's claimed classification is
+// recorded but never used.
 export async function auditorPass(report, config = auditorConfig()) {
   if (!config.configured) return { ...NOT_CONFIGURED, pass: 'auditor' };
   try {
     const output = await callModel(config, {
       system:
-        'You are the AuditCanvas auditor. You receive deterministic scanner findings with evidence IDs. Explain impact and prioritize. You may not create, delete, or downgrade findings. Reference only the evidence IDs given.',
+        'You are the AuditCanvas auditor. You receive deterministic scanner findings with evidence IDs. Explain impact and prioritize. You may not create, delete, or downgrade findings. Reference only the evidence IDs given. You may also propose exploit chains: relationships BETWEEN findings where one finding\'s evidence enables the next. Each chain proposal needs a type from the provided catalog, nodes citing finding IDs and evidence IDs, edges with explanations, and your claimed classification (supported / conditional / unproven). Cookie flags alone never prove session theft: HttpOnly governs script access to a cookie, Secure governs its transport.',
       user: JSON.stringify({
         findings: report.results.filter((r) => r.outcome === 'finding'),
         evidence: report.evidence,
+        chainTypes: ['cors-data-exposure', 'plaintext-session-exposure', 'known-vuln-library-exposure'],
       }),
     });
     const verdict = validateAuditorOutput(output, report);
@@ -120,35 +125,19 @@ export async function auditorPass(report, config = auditorConfig()) {
 
 // Pass 2 of 3: refutation — a separate adversarial call that sees only
 // the claim and the stored evidence, never the auditor's reasoning.
-export async function refutationPass(report, config = auditorConfig()) {
-  if (!config.configured) return { status: 'not-run', pass: 'refutation', reason: NOT_CONFIGURED.reason };
-  // The deterministic evidence assessment that consumes the counterargument
-  // lands with the Day 4 build; the call site and its failure state are
-  // fixed now so nothing downstream has to change shape.
-  return { status: 'not-run', pass: 'refutation', reason: 'Refutation wiring lands on Day 4 (spec plan); call site reserved.' };
+// The implementation lives in refutation.js (deterministic evidence
+// assessment included); this wrapper exists so the three call sites
+// stay visible in one file. Imported dynamically to avoid a module
+// cycle (refutation.js uses callModel from here).
+export async function refutationPass(report, chainsResult, config = auditorConfig()) {
+  const { runRefutation } = await import('./refutation.js');
+  return runRefutation(report, chainsResult, config);
 }
 
-// Pass 3 of 3: summary + fix pack drafting.
+// Pass 3 of 3: summary + fix pack drafting. The fix pack itself is
+// generated deterministically (downloads.js) so it exists in every
+// report, engine-only included; this pass only drafts prose summary.
 export async function summaryPass(report, config = auditorConfig()) {
   if (!config.configured) return { ...NOT_CONFIGURED, pass: 'summary' };
-  return { status: 'not-run', pass: 'summary', reason: 'Summary/fix-pack wiring lands after the auditor pass (Day 4-7); call site reserved.' };
-}
-
-// Orchestrator: at most MAX_MODEL_CALLS_PER_SCAN calls, in order, and
-// the report always survives without the API.
-export async function annotateReport(report) {
-  const config = auditorConfig();
-  if (!config.configured) {
-    return {
-      status: 'engine-only',
-      modelId: null,
-      reason: NOT_CONFIGURED.reason,
-      calls: [],
-    };
-  }
-  const calls = [];
-  calls.push(await auditorPass(report, config));
-  if (calls.length < MAX_MODEL_CALLS_PER_SCAN) calls.push(await refutationPass(report, config));
-  if (calls.length < MAX_MODEL_CALLS_PER_SCAN) calls.push(await summaryPass(report, config));
-  return { status: 'annotated', modelId: config.modelId, calls };
+  return { status: 'not-run', pass: 'summary', reason: 'Summary drafting lands after the auditor pass is verified live; the deterministic fix pack (downloads) does not depend on it.' };
 }
