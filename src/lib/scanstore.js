@@ -42,7 +42,7 @@ export function checkScanAllowed(targetUrl, ip) {
   return { ok: true };
 }
 
-export function createScan({ url, attested = false, ip = 'unknown' }) {
+export function createScan({ url, attested = false, ip = 'unknown', rescanOf = null }) {
   const parsed = assertUrlAllowed(url); // throws SafeFetchError on bad input
   const target = parsed.toString();
   // Ownership verification state is captured WITH the session at
@@ -70,6 +70,11 @@ export function createScan({ url, attested = false, ip = 'unknown' }) {
     authorizationState,
     verification: verification || null,
     attested: Boolean(attested),
+    // Rescan lineage (SPEC.md: scan diff + fix verification). A rescan
+    // is a fresh session for the same target under the same policy,
+    // linked to the completed scan it follows; the diff is computed
+    // from the two finalized reports, never stored as its own truth.
+    rescanOf: rescanOf || null,
     status: 'running',
     createdAt: now,
     updatedAt: now,
@@ -87,6 +92,7 @@ export function createScan({ url, attested = false, ip = 'unknown' }) {
           : null,
         scanPolicy: policy.name,
         ip,
+        ...(rescanOf ? { rescanOf } : {}),
       },
     ],
   };
@@ -118,6 +124,7 @@ export function scanSummary(session) {
     scanPolicy: session.policyName,
     authorizationState: session.authorizationState,
     verification: session.verification || null,
+    rescanOf: session.rescanOf || null,
     groupStatus: session.groupStatus,
     groups: GROUPS.map((g) => ({ id: g.id, name: g.name })),
     policy: POLICIES[session.policyName],

@@ -57,6 +57,7 @@ const { buildEvidenceBundle, buildFixPack, EVIDENCE_FILENAME, FIX_PACK_FILENAME 
 const { listZipEntries, readZipEntry } = await import('../src/lib/zip.js');
 const ownership = await import('../src/lib/ownership.js');
 const { createScan } = await import('../src/lib/scanstore.js');
+const { diffReports } = await import('../src/lib/diff.js');
 const fixtures = await import('../fixtures/server.mjs');
 
 const results = [];
@@ -333,6 +334,75 @@ const corsProposal = (extraNodes = []) => ({
   check('ownership: a non-matching TXT record does not verify', missRes.status === 'not-found' && !ownership.isVerifiedHost('verify-miss.test'));
   const restrictedSession = createScan({ url: 'https://unverified-fixture.test/', ip: 'verify-test' });
   check('ownership: unverified targets keep the restricted passive policy', restrictedSession.policyName === 'restricted' && restrictedSession.authorizationState === 'unattested' && policyForTarget(new URL('https://unverified-fixture.test/'), {}).policy.name === 'restricted');
+}
+
+// --- Day 6-7: rescan / diff (fix verification) ---
+// Same target identity (http://127.0.0.1/) scanned vulnerable, then the
+// fixture origin is flipped to its hardened behavior and the SAME
+// target is rescanned — the diff must show the fixes as resolved,
+// driven purely by the fresh evidence.
+{
+  const mkReport = (scanId, rs) => ({
+    scanId, target: 'http://127.0.0.1/', startedAt: '2026-10-28T00:00:00.000Z',
+    scanPolicy: 'full', results: rs, scores: computeScores(rs),
+  });
+
+  const beforeScan = await scan('http://127.0.0.1/');
+  const before = mkReport('scan-before', beforeScan.results);
+  fixtures.setVulnerableOriginHardened(true);
+  let after;
+  try {
+    const afterScan = await scan('http://127.0.0.1/', { dnsTxt: dnsValid });
+    after = mkReport('scan-after', afterScan.results);
+  } finally {
+    fixtures.setVulnerableOriginHardened(false);
+  }
+
+  const d = diffReports(before, after);
+  const resolvedIds = d.resolved.map((e) => e.checkId);
+  check('diff: fixed findings are resolved (CSP, CORS, /.env, cookie flags, jQuery CVE, SPF)',
+    ['headers.csp-unsafe-inline', 'cors.credentialed-exposure', 'exposed.env', 'cookies.httponly-missing', 'stack.jquery-cve-2020-11022', 'email.spf-missing']
+      .every((id) => resolvedIds.includes(id)), JSON.stringify(resolvedIds));
+  check('diff: hardening introduces no new findings and leaves none persistent',
+    d.counts.new === 0 && d.counts.persistent === 0 && d.counts.severityChanged === 0,
+    JSON.stringify(d.counts));
+  check('diff: every before-finding is accounted for as resolved',
+    d.counts.resolved === findingsOf(beforeScan.results).length && d.counts.couldNotRepeat === 0,
+    JSON.stringify({ counts: d.counts, beforeFindings: findingsOf(beforeScan.results).length }));
+  check('diff: risk movement is real (findings -> grade A / risk 0)',
+    d.scores.before.riskScore > 0 && d.scores.after.riskScore === 0 && d.scores.after.riskGrade === 'A'
+      && d.scores.delta.riskScore === -d.scores.before.riskScore,
+    JSON.stringify(d.scores));
+
+  const reverse = diffReports(after, before);
+  check('diff: the reverse comparison reports the same flaws as new findings',
+    reverse.counts.new === d.counts.resolved && reverse.counts.resolved === 0,
+    JSON.stringify(reverse.counts));
+
+  const identity = diffReports(before, before);
+  check('diff: a scan diffed against itself is all persistent, zero movement',
+    identity.counts.persistent === findingsOf(beforeScan.results).length
+      && identity.counts.resolved === 0 && identity.counts.new === 0 && identity.scores.delta.riskScore === 0,
+    JSON.stringify(identity.counts));
+
+  // Honesty rule: a finding the rescan could not re-verify (check came
+  // back Inconclusive) is could-not-repeat, NEVER resolved.
+  const synResult = (outcome, severity) => ({
+    checkId: 'headers.hsts-missing', findingId: outcome === 'finding' ? 'f-headers-hsts-missing' : null,
+    group: 'headers', outcome, severity, title: 'HSTS missing', detail: 'd', evidenceIds: [], inference: false,
+  });
+  const synBefore = { scanId: 'syn-b', target: 'https://x.example/', startedAt: '2026-10-28T00:00:00.000Z', scanPolicy: 'full', results: [synResult('finding', 'medium')], scores: computeScores([synResult('finding', 'medium')]) };
+  const synAfter = { scanId: 'syn-a', target: 'https://x.example/', startedAt: '2026-10-28T01:00:00.000Z', scanPolicy: 'full', results: [synResult('inconclusive', null)], scores: computeScores([synResult('inconclusive', null)]) };
+  const synDiff = diffReports(synBefore, synAfter);
+  check('diff: an un-re-verifiable finding is could-not-repeat, never resolved',
+    synDiff.counts.couldNotRepeat === 1 && synDiff.counts.resolved === 0, JSON.stringify(synDiff.counts));
+
+  const synAfterHigh = { ...synAfter, results: [synResult('finding', 'high')], scores: computeScores([synResult('finding', 'high')]) };
+  const sevDiff = diffReports(synBefore, synAfterHigh);
+  check('diff: same check at a different severity is severity-changed, not persistent',
+    sevDiff.counts.severityChanged === 1 && sevDiff.counts.persistent === 0
+      && sevDiff.severityChanged[0].severityBefore === 'medium' && sevDiff.severityChanged[0].severityAfter === 'high',
+    JSON.stringify(sevDiff.counts));
 }
 
 for (const s of servers) {

@@ -23,6 +23,7 @@ export function buildReport(session) {
   return {
     schemaVersion: EVIDENCE_SCHEMA_VERSION,
     scanId: session.id,
+    rescanOf: session.rescanOf || null,
     target: session.target,
     authorizationState: session.authorizationState,
     scanPolicy: session.policyName,

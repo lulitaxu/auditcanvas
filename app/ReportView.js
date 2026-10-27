@@ -246,7 +246,85 @@ function RefutationBlock({ report }) {
   );
 }
 
-export default function ReportView({ report, scanId }) {
+function DiffList({ title, items, chipClass, chipLabel, note }) {
+  if (!items || items.length === 0) return null;
+  return (
+    <>
+      <h4>{title} ({items.length})</h4>
+      <ul className="results">
+        {items.map((e) => (
+          <li key={e.checkId}>
+            <div className="result-head">
+              <span className={`chip ${chipClass}`}>{chipLabel}</span>
+              {e.severityAfter || e.severityBefore ? (
+                <span className="sev">
+                  {e.severityBefore && e.severityAfter && e.severityBefore !== e.severityAfter
+                    ? `${e.severityBefore} → ${e.severityAfter}`
+                    : e.severityAfter || e.severityBefore}
+                </span>
+              ) : null}
+              <span className="result-title">{e.title}</span>
+            </div>
+            <div className="evids">{e.findingId || e.checkId}</div>
+          </li>
+        ))}
+      </ul>
+      {note ? <p className="policy-line">{note}</p> : null}
+    </>
+  );
+}
+
+function DiffBlock({ diff }) {
+  if (!diff) return null;
+  const { scores, counts } = diff;
+  const signed = (n) => (n > 0 ? `+${n}` : `${n}`);
+  return (
+    <>
+      <h3>What changed since the previous scan</h3>
+      <p className="policy-line">
+        Compared against the scan of {new Date(diff.beforeAt).toLocaleString()} (same target,
+        same policy). A finding counts as resolved only when the rescan&apos;s fresh evidence
+        passes the check; a check the rescan could not re-verify is listed separately and is
+        never counted as fixed.
+      </p>
+      <div className="scores">
+        <div className="score">
+          <div className="k">Risk</div>
+          <div className="v">{scores.before.riskGrade} · {scores.before.riskScore} → {scores.after.riskGrade} · {scores.after.riskScore}</div>
+          <div className="n">{signed(scores.delta.riskScore)} points</div>
+        </div>
+        <div className="score">
+          <div className="k">Coverage</div>
+          <div className="v">{Math.round(scores.before.coverage * 100)}% → {Math.round(scores.after.coverage * 100)}%</div>
+          <div className="n">{signed(Math.round(scores.delta.coverage * 100))} points</div>
+        </div>
+        <div className="score">
+          <div className="k">Confidence</div>
+          <div className="v">{Math.round(scores.before.confidence * 100)}% → {Math.round(scores.after.confidence * 100)}%</div>
+          <div className="n">{signed(Math.round(scores.delta.confidence * 100))} points</div>
+        </div>
+      </div>
+      <p className="policy-line">
+        {counts.resolved} resolved · {counts.new} new · {counts.persistent} still present
+        {counts.severityChanged ? ` · ${counts.severityChanged} severity-changed` : ''}
+        {counts.couldNotRepeat ? ` · ${counts.couldNotRepeat} could not be re-checked` : ''}
+      </p>
+      <DiffList title="Resolved (verified by the rescan)" items={diff.resolved} chipClass="pass" chipLabel="Resolved" />
+      <DiffList title="New findings" items={diff.newFindings} chipClass="finding" chipLabel="New" />
+      <DiffList title="Still present" items={diff.persistent} chipClass="finding" chipLabel="Unchanged" />
+      <DiffList title="Severity changed" items={diff.severityChanged} chipClass="inconclusive" chipLabel="Changed" />
+      <DiffList
+        title="Could not be re-checked"
+        items={diff.couldNotRepeat}
+        chipClass="inconclusive"
+        chipLabel="Unverified"
+        note="These checks did not reach a verdict in the rescan (Inconclusive or not assessed), so the earlier finding is neither confirmed nor cleared."
+      />
+    </>
+  );
+}
+
+export default function ReportView({ report, scanId, diff = null, onRescan = null, busy = false }) {
   const [mode, setMode] = useState('owner');
   const technical = mode === 'technical';
   return (
@@ -255,6 +333,11 @@ export default function ReportView({ report, scanId }) {
         <button aria-pressed={!technical} onClick={() => setMode('owner')}>Owner mode</button>
         <button aria-pressed={technical} onClick={() => setMode('technical')}>Technical mode</button>
         <span className="dl-row">
+          {onRescan ? (
+            <button className="btn" type="button" onClick={onRescan} disabled={busy}>
+              Rescan this target
+            </button>
+          ) : null}
           <a className="btn secondary" href={`/api/scan/${scanId}/evidence`} download="auditcanvas-evidence.json">auditcanvas-evidence.json</a>
           <a className="btn secondary" href={`/api/scan/${scanId}/fix-pack`} download="auditcanvas-fix-pack.zip">auditcanvas-fix-pack.zip</a>
         </span>
@@ -275,6 +358,8 @@ export default function ReportView({ report, scanId }) {
           {new Date(report.verification.verifiedAt).toLocaleString()} — full check set ran.
         </p>
       ) : null}
+
+      <DiffBlock diff={diff} />
 
       <h3>Evidence graph</h3>
       <Graph report={report} />

@@ -123,12 +123,50 @@ export default function ScanClient() {
   const [groupStatus, setGroupStatus] = useState({});
   const [results, setResults] = useState([]);
   const [report, setReport] = useState(null);
+  const [diff, setDiff] = useState(null);
   const [showSamples, setShowSamples] = useState(false);
+
+  // Drive one scan session through its per-group steps and load the
+  // finalized report. Shared by fresh scans and rescans.
+  async function driveScan(start) {
+    setScan(start);
+    setGroupStatus(start.groupStatus);
+    setResults([]);
+    setReport(null);
+    setDiff(null);
+
+    for (const g of start.groups) {
+      setGroupStatus((prev) => ({ ...prev, [g.id]: 'running' }));
+      const stepRes = await fetch('/api/scan/step', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ scanId: start.scanId, group: g.id }),
+      });
+      const step = await stepRes.json();
+      if (!stepRes.ok) throw new Error(step.error || `The ${g.name} step failed.`);
+      setResults((prev) => [...prev, ...step.results]);
+      setGroupStatus(step.groupStatus);
+    }
+
+    const repRes = await fetch(`/api/scan/${start.scanId}`);
+    const rep = await repRes.json();
+    if (!repRes.ok) throw new Error(rep.error || 'Could not load the report.');
+    setReport(rep);
+
+    // A rescan carries its lineage: fetch the diff against the scan it
+    // followed so the report opens with what changed.
+    if (start.rescanOf) {
+      const diffRes = await fetch(`/api/scan/${start.scanId}/diff`);
+      const d = await diffRes.json();
+      if (diffRes.ok) setDiff(d);
+    }
+  }
 
   async function runScan(targetUrl, isAttested) {
     setBusy(true);
     setError(null);
     setReport(null);
+    setDiff(null);
     setResults([]);
     setScan(null);
     setGroupStatus({});
@@ -140,26 +178,26 @@ export default function ScanClient() {
       });
       const start = await startRes.json();
       if (!startRes.ok) throw new Error(start.error || 'Could not start the scan.');
-      setScan(start);
-      setGroupStatus(start.groupStatus);
+      await driveScan(start);
+    } catch (e) {
+      setError(e && e.message ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
 
-      for (const g of start.groups) {
-        setGroupStatus((prev) => ({ ...prev, [g.id]: 'running' }));
-        const stepRes = await fetch('/api/scan/step', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ scanId: start.scanId, group: g.id }),
-        });
-        const step = await stepRes.json();
-        if (!stepRes.ok) throw new Error(step.error || `The ${g.name} step failed.`);
-        setResults((prev) => [...prev, ...step.results]);
-        setGroupStatus(step.groupStatus);
-      }
-
-      const repRes = await fetch(`/api/scan/${start.scanId}`);
-      const rep = await repRes.json();
-      if (!repRes.ok) throw new Error(rep.error || 'Could not load the report.');
-      setReport(rep);
+  // Rescan the report's target (same target, same policy) and show the
+  // diff: which findings the fresh evidence resolves, which are new,
+  // and which are still there.
+  async function rescan() {
+    if (!scan) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/scan/${scan.scanId}/rescan`, { method: 'POST' });
+      const start = await res.json();
+      if (!res.ok) throw new Error(start.error || 'Could not start the rescan.');
+      await driveScan(start);
     } catch (e) {
       setError(e && e.message ? e.message : String(e));
     } finally {
@@ -199,7 +237,7 @@ export default function ScanClient() {
         ))}
       </ul>
       {report ? (
-        <ReportView report={report} scanId={scan.scanId} />
+        <ReportView report={report} scanId={scan.scanId} diff={diff} onRescan={rescan} busy={busy} />
       ) : (
         <>
           <h3>Checks so far</h3>

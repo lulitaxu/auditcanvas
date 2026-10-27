@@ -121,8 +121,20 @@ function listen(server, port, host = '127.0.0.1') {
   });
 }
 
+// The vulnerable origin can be flipped to serve the hardened responses
+// at the SAME origin, so the rescan/diff flow is exercised the way a
+// real fix-and-rescan works: same target identity, changed behavior.
+let vulnerableOriginHardened = false;
+export function setVulnerableOriginHardened(on) {
+  vulnerableOriginHardened = Boolean(on);
+}
+
 export function startVulnerableHttp(port = 80, host = '127.0.0.1') {
-  return listen(http.createServer(vulnerableHandler), port, host);
+  return listen(
+    http.createServer((req, res) => (vulnerableOriginHardened ? hardenedHandler : vulnerableHandler)(req, res)),
+    port,
+    host
+  );
 }
 export function startHardenedHttp(port = 80, host = '127.0.0.2') {
   return listen(http.createServer(hardenedHandler), port, host);
