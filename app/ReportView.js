@@ -338,8 +338,12 @@ export default function ReportView({ report, scanId, diff = null, onRescan = nul
               Rescan this target
             </button>
           ) : null}
-          <a className="btn secondary" href={`/api/scan/${scanId}/evidence`} download="auditcanvas-evidence.json">auditcanvas-evidence.json</a>
-          <a className="btn secondary" href={`/api/scan/${scanId}/fix-pack`} download="auditcanvas-fix-pack.zip">auditcanvas-fix-pack.zip</a>
+          {scanId ? (
+            <>
+              <a className="btn secondary" href={`/api/scan/${scanId}/evidence`} download="auditcanvas-evidence.json">auditcanvas-evidence.json</a>
+              <a className="btn secondary" href={`/api/scan/${scanId}/fix-pack`} download="auditcanvas-fix-pack.zip">auditcanvas-fix-pack.zip</a>
+            </>
+          ) : null}
         </span>
       </div>
 
