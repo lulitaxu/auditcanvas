@@ -21,7 +21,7 @@ const VULN_HTML = `<!doctype html><html><head><title>Fixture: vulnerable</title>
 
 const HARDENED_HTML = `<!doctype html><html><head><title>Fixture: hardened</title>
 <script src="/vendor/jquery-3.7.1.min.js"></script>
-<script src="/vendor/lodash-4.17.21.min.js"></script>
+<script src="/vendor/lodash-4.17.23.min.js"></script>
 </head><body><h1>Hardened fixture</h1></body></html>`;
 
 function vulnerableHandler(req, res) {

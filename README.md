@@ -78,7 +78,7 @@ src/lib/
   dnsutil.js             TXT lookups with the spec's DNS error taxonomy
   context.js             Scan policies (full/restricted), budgets, scan context
   scanner/               The eight frozen check groups + registry
-  cve-snapshot.json      Versioned CVE snapshot (Night 0: hand-seeded stub)
+  cve-snapshot.json      Versioned CVE snapshot (NVD-verified pull, version in every report stamp)
   scoring.js             Deterministic Risk / Coverage / Confidence
   auditor.js             Muse Spark call sites (max 3/scan), report validator
   chains.js              Exploit chains: server validation + classification

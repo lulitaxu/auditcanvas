@@ -185,12 +185,19 @@ theft (HttpOnly governs script access; Secure governs transport).
   deterministic assessment, scoring interaction) but have only ever run
   their not-run states: the first live exercise waits on the Meta key,
   exactly like the auditor pass.
-- **CVE snapshot is a hand-seeded stub** (`src/lib/cve-snapshot.json`,
-  version `stub-2026-10-28`) covering a few well-known library ranges
-  for offline development and fixture tests. Entries must be verified
-  against NVD and the snapshot replaced with a dated pull before any
-  real report is published; the snapshot version travels in every
-  report's reproducibility stamp with a stale warning after 90 days.
+- **CVE snapshot is now a verified NVD pull** (`src/lib/cve-snapshot.json`,
+  version `nvd-2026-10-28`): all 20 entries across the five fingerprinted
+  libraries (jQuery, Bootstrap, Lodash, AngularJS, Moment.js) checked
+  against their NVD records (affected CPE ranges + CVSS v3.x severity)
+  via the NVD API 2.0 on 2026-10-28. Verification corrected four seeded
+  ranges (Bootstrap CVE-2019-8331 4.x starts at 4.3.0, CVE-2018-14042
+  runs to <4.1.2 not <4.0.2, Lodash CVE-2020-8203 fixed in 4.17.20 not
+  4.17.19, jQuery CVE-2020-11023 starts at 1.0.3) and dropped invented
+  lower bounds NVD does not carry. Two checked CVEs were deliberately
+  excluded: CVE-2024-6484 is REJECTED in NVD, and CVE-2022-24785 is
+  scoped to npm server users, not browser-loaded Moment.js. The snapshot
+  version travels in every report's reproducibility stamp with a stale
+  warning after 90 days.
 - Scan sessions are in-memory; report persistence, 7-day expiry, and
   one-click delete land with the report-lifecycle work.
 - The summary pass (call 3 of 3) remains a call-site stub: the fix pack
