@@ -19,9 +19,23 @@ npm run dev                  # http://localhost:3000
 
 Judge mode is the first screen: **Run the seeded demo** scans the
 deliberately vulnerable target built into this app
-(`/api/demo-target`); **Explore sample reports** opens the saved-results
-space (seeded on Day 7 of the build). You can also scan your own site —
+(`/api/demo-target`); **Explore sample reports** opens the preloaded
+saved results — real scans of our own sites (nyktos.tech,
+cliphaus.dev), each labelled "Saved result" with its scan timestamp,
+scanner version and model ID. You can also scan your own site —
 unverified targets get the restricted passive policy.
+
+The sample reports are generated, not shipped as data: run
+`node scripts/generate-samples.mjs` from an environment with ordinary
+direct egress (the deployed app's host, or a developer machine) and it
+drives this app's own pipeline against both sites, writing a sample
+only if the scan genuinely reached its target. Until that post-deploy
+run happens, the samples slot shows an explicit "generated after
+deploy" placeholder naming both pending targets — the build sandbox
+cannot produce them, because its resolver answers these hosts with
+reserved 198.18.0.0/15 addresses (which the scanner correctly refuses)
+and its network intercepts direct TLS. Details in `HACKATHON.md`
+(Day 8 entry) and `src/lib/sample-reports/README.md`.
 
 ## Verify the scanner
 
@@ -33,7 +47,11 @@ This boots the fixture servers (vulnerable, hardened, slow, garbage,
 and an HTTPS vulnerable origin under a throwaway local CA generated on
 the fly) and asserts the scanner's verdicts: expected findings on the
 vulnerable targets, **zero** findings on the hardened target, and
-Inconclusive (never Pass) on the malformed/timeout targets.
+Inconclusive (never Pass) on the malformed/timeout targets. It also
+covers chain classification (including the spec's corrected CORS
+example), refutation outcomes and their effect on the scores, the two
+downloads, DNS TXT ownership, and the rescan diff. Current suite:
+**73/73 assertions**.
 
 > **Port note:** the scanner, per spec, only speaks ports 80/443, so the
 > fixtures bind those ports on distinct loopback addresses
@@ -43,7 +61,11 @@ Inconclusive (never Pass) on the malformed/timeout targets.
 > `sudo sysctl net.ipv4.ip_unprivileged_port_start=0` first.
 
 `npm run fixtures` starts the same servers standalone (HTTP fixtures on
-80, HTTPS on 443 when `AC_CERT_DIR` points at a cert directory).
+80, HTTPS on 443 when `AC_CERT_DIR` points at a cert directory). In
+standalone mode a loopback control (`http://127.0.0.1:8911/flip`,
+`/reset`, `/state`) flips the vulnerable fixture to its hardened
+behavior at the same origin — that is what makes the demo video's
+fix-and-rescan segment recordable (`DEMO-SCRIPT.md`).
 
 ## Configuration
 
@@ -69,6 +91,8 @@ app/                     Next.js App Router UI + API routes
   api/scan/start|step|[id] Stepwise scan API (one check group per step)
   api/scan/[id]/evidence   auditcanvas-evidence.json (versioned schema)
   api/scan/[id]/fix-pack   auditcanvas-fix-pack.zip (suggested patches)
+  api/scan/[id]/rescan|diff Fix-and-rescan lineage + scan diff
+  api/samples[/<slug>]     Preloaded Judge-mode sample reports (Saved results)
   api/verify/start|check   DNS TXT ownership challenge
   api/demo-target/         Seeded deliberately-vulnerable demo target
 src/lib/
@@ -90,9 +114,43 @@ src/lib/
   graph.js               Evidence graph model for the canvas
   report.js              Report assembly + reproducibility stamp
   scanstore.js           In-memory scan sessions, cooldowns, quotas
+  samples.js             Sample-report store (reads sample-reports/*.json)
+  sample-reports/        Generated Saved-result reports (post-deploy, see above)
 fixtures/server.mjs      Vulnerable / hardened / slow / garbage test origins
 scripts/verify.mjs       Fixture verification suite (npm run verify)
+scripts/generate-samples.mjs  Real scans -> Judge-mode sample reports
 ```
+
+## Current state (honest list)
+
+- **Built and verified:** the eight scanner groups, SSRF-safe fetch,
+  deterministic scoring, evidence graph canvas with Owner/Technical
+  modes, Judge mode, DNS TXT ownership, chains validation +
+  classification, refutation with deterministic assessment, both
+  downloads, rescan + diff, and the NVD-verified CVE snapshot
+  (`nvd-2026-10-28`). Fixture suite 73/73; production build passes.
+- **Auditor layer is wired, live-model verification is pending.** All
+  three Muse Spark call sites, the report validator, and the
+  engine-only fallback are implemented; until `META_API_KEY` /
+  `META_MODEL_ID` are set in a deployment and the first real auditor
+  call runs, reports carry the explicit `engine-only` status and
+  chains/refutation show their not-run states. Nothing in the UI
+  pretends the model ran.
+- **Sample reports are pending generation** (see "Run it locally"):
+  the slot, the API, and the generator are shipped; the reports
+  themselves are produced by one post-deploy run of the generator.
+- **Summary pass (call 3 of 3) is a call-site stub:** the fix pack is
+  generated deterministically and appears in every report; only the
+  prose summary waits on the live auditor.
+- **Scan sessions are in-memory.** Report persistence, 7-day expiry,
+  and one-click delete are the remaining report-lifecycle work.
+
+## Hackathon documents
+
+- `SPEC.md` — the locked design spec (v2.2).
+- `HACKATHON.md` — build log, including the honest stubs list.
+- `SUBMISSION.md` — the cerebralvalley.ai submission draft.
+- `DEMO-SCRIPT.md` — the timed 3-minute demo video run-of-show.
 
 ## Safety model (short version)
 
