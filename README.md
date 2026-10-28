@@ -135,8 +135,39 @@ src/lib/
   sample-reports/        Generated Saved-result reports (post-deploy, see above)
 fixtures/server.mjs      Vulnerable / hardened / slow / garbage test origins
 scripts/verify.mjs       Fixture verification suite (npm run verify)
+scripts/verify-admin.mjs Admin suite against a fake Neon adapter (npm run verify:admin)
 scripts/generate-samples.mjs  Real scans -> Judge-mode sample reports
+
+app/admin/               Operator console (login, scan console, history, report detail)
+app/api/admin/           Admin APIs: login/logout, grant-bound scan start|step|finalize,
+                         stored-report downloads (evidence, fix-pack)
+src/lib/admin/           Admin storage (dedicated Neon), scrypt password check,
+                         durable login backoff, hashed-token sessions, CSRF,
+                         scan grants, audit events
+db/migrations/           Admin schema (0001_admin.sql)
 ```
+
+## Operator admin panel
+
+A password-only operator panel at `/admin` (never linked from the
+public UI) that can run the full non-destructive check set against
+targets that have not completed DNS TXT verification — for the
+operator's own properties and authorized engagements. Admin reports
+are labeled `origin: 'admin'` / `authorizationState: 'admin'` (never
+'verified'), persist in a dedicated Neon database, and are
+downloadable only from the stored report. Sessions are server-side,
+hashed, and rotating; logins are protected by durable exponential
+backoff; every admin step and finalize revalidates the session and
+the database-backed scan grant. The full design is the dated
+addendum at the end of `SPEC.md`.
+
+**Status: code shipped; activation pending founder steps.** The
+panel is inert ("Admin is not configured.") until the founder
+creates the Neon database, applies `db/migrations/0001_admin.sql`,
+and sets the admin env vars in Vercel — see
+[`docs/ADMIN.md`](docs/ADMIN.md). All admin tests run against a
+stubbed store (`npm run verify:admin`, 97 assertions); no live-DB
+verification has been performed yet, and none is claimed.
 
 ## Current state (honest list)
 
@@ -164,10 +195,11 @@ scripts/generate-samples.mjs  Real scans -> Judge-mode sample reports
 
 ## Hackathon documents
 
-- `SPEC.md` — the locked design spec (v2.2).
+- `SPEC.md` — the locked design spec (v2.2) plus dated addenda.
 - `HACKATHON.md` — build log, including the honest stubs list.
 - `SUBMISSION.md` — the cerebralvalley.ai submission draft.
 - `DEMO-SCRIPT.md` — the timed 3-minute demo video run-of-show.
+- `docs/ADMIN.md` — founder setup sheet for the operator admin panel.
 
 ## Safety model (short version)
 

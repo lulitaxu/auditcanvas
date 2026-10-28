@@ -464,3 +464,49 @@ SQL/NoSQL injection remain NOT assessed: they require authenticated
 interaction or injection payloads, which the non-destructive promise
 excludes. No entropy heuristics: a string that merely looks random
 is not evidence of a secret.
+
+---
+
+## Addendum (2026-10-29): operator admin override
+
+Post-v2.2 addition. The ownership rule in v2.2 is unchanged for the
+public product and for Judge mode: a public unverified target gets
+the restricted policy, and ownership is proven only by the DNS TXT
+method bound to the exact hostname. Judge mode has no URL input and
+no interaction with this addendum.
+
+For the product's own operator, a separate authenticated surface
+exists at /admin (never linked from the public UI, noindex,
+no-store):
+
+- Purpose: support, quality assurance, controlled testing of the
+  operator's own properties, and prospect demonstrations before a
+  prospect completes DNS verification.
+- Authentication: one password, configured only as a salted scrypt
+  hash in a server environment variable; rotating server-side
+  sessions whose tokens are stored only as hashes in a dedicated
+  Neon database; a per-session CSRF token; durable exponential
+  login backoff recorded in the same database.
+- Effect: an admin session creates a durable scan grant (bound to
+  the creating session and one canonical target, expiring after 30
+  minutes) from which the full non-destructive policy derives for
+  that scan only. "Full" is exactly the existing full policy — the
+  panel cannot exploit, bypass authentication, guess credentials,
+  submit forms, reach private/loopback/link-local targets, or act
+  as a fetch proxy; the SSRF guard is unchanged and admin scans
+  resolve with allowPrivate false except for the pre-existing
+  demo-target behavior.
+- Labeling: admin scans of unverified targets produce reports with
+  origin 'admin' and authorizationState 'admin' — never 'verified',
+  never 'attested' — with the operator-override note in the UI, the
+  report, the stamp, and both downloads. A target that independently
+  verifies (demo host, seeded demo, DNS TXT) keeps its factual
+  verification basis.
+- Persistence: finalized admin reports are stored in the admin
+  database with a scan history, and admin downloads are built only
+  from the stored report. Admin logins, scans, report views, and
+  downloads are audit-logged.
+- Isolation: the public scan routes never read the admin cookie or
+  any admin field, and the admin routes derive policy only from the
+  database-backed grant; neither surface can borrow the other's
+  authority.

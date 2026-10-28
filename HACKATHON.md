@@ -312,3 +312,36 @@ theft (HttpOnly governs script access; Secure governs transport).
    fixtures; precision gained / true findings retained).
 4. Report lifecycle: persistence, 7-day expiry, one-click delete.
 5. Hardening pass (budgets, cooldowns, quotas), rehearsal, submission.
+
+### Day 9 — Oct 29, 2026: operator admin panel, Phase 1 (post-v2.2 addendum)
+
+Shipped in code: the operator admin panel designed as the smallest
+shippable version of the admin design doc. Password-only login
+(salted scrypt hash in env, generic errors, durable exponential
+backoff with a global circuit breaker), rotating server-side
+sessions stored as hashes in a dedicated Neon database, per-session
+CSRF tokens, and dedicated /api/admin/scans/start|step|finalize
+routes where every call revalidates the session plus a
+database-backed scan grant (creating session + canonical target +
+30-minute expiry). Admin reports carry origin 'admin' and
+authorizationState 'admin' (never 'verified'), persist in Neon with
+history + detail pages, and downloads build only from the stored
+report. Public routes are untouched and provably ignore admin
+cookies/fields. Verification: public suite 156/156 plus a new admin
+suite (npm run verify:admin, 97/97) that runs the real handlers
+against a fake Neon adapter, including the negative battery
+(backoff, fixation, CSRF, grant binding, SSRF under admin, sentinel
+scan for raw secrets). Two defects the suite surfaced were fixed in
+the same change: the evidence catalog now admits the '<group>.fetch'
+Inconclusive that headers/cookies genuinely emit (previously ANY
+scan of an unreachable target failed assembly, public included),
+and typed store errors map to the generic 503 everywhere on admin
+paths.
+
+Honest state: Phase 1 is NOT live-verified against a real database.
+The founder has not yet created the Neon database or set the admin
+env vars, so the deployed panel correctly renders its
+not-configured state and admin login cannot succeed; all database
+behavior is proven against the stubbed store only. Founder steps
+are in docs/ADMIN.md. Phase 2 (visitor beacon, /api/visit, prune
+cron) is deliberately not built.
