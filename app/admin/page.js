@@ -117,7 +117,7 @@ export default async function AdminConsolePage() {
   if (resolved.kind === 'down') {
     return (
       <main className="admin-main">
-        <div className="stamp">Admin storage is unavailable.</div>
+        <div className="stamp">Admin is unavailable.</div>
       </main>
     );
   }

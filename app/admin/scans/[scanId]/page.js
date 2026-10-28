@@ -26,7 +26,7 @@ export default async function AdminScanDetailPage({ params }) {
   if (resolved.kind === 'down') {
     return (
       <main className="admin-main">
-        <div className="stamp">Admin storage is unavailable.</div>
+        <div className="stamp">Admin is unavailable.</div>
       </main>
     );
   }
@@ -56,7 +56,7 @@ export default async function AdminScanDetailPage({ params }) {
   );
 
   if (loadFailed) {
-    return shell(<div className="stamp">Admin storage is unavailable.</div>);
+    return shell(<div className="stamp">Admin is unavailable.</div>);
   }
   if (!run || run.origin !== 'admin') {
     return shell(<div className="stamp">Admin scan not found.</div>);

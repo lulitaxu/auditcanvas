@@ -34,7 +34,7 @@ export default async function AdminHistoryPage({ searchParams }) {
   if (resolved.kind === 'down') {
     return (
       <main className="admin-main">
-        <div className="stamp">Admin storage is unavailable.</div>
+        <div className="stamp">Admin is unavailable.</div>
       </main>
     );
   }
@@ -94,7 +94,7 @@ export default async function AdminHistoryPage({ searchParams }) {
       </form>
 
       {loadFailed ? (
-        <div className="stamp">Admin storage is unavailable.</div>
+        <div className="stamp">Admin is unavailable.</div>
       ) : rows.length === 0 ? (
         <div className="stamp">No admin scans match these filters.</div>
       ) : (
