@@ -41,7 +41,8 @@ const RUN_LIST_COLUMNS =
   'scan_id, origin, target, target_host, target_display, authorization_state, scan_policy, status, ' +
   'created_by_session_id, rescan_of, completed_groups, step_attempts, bundle_set_digest, risk_score, ' +
   'risk_grade, findings_count, confirmed_findings_count, coverage_ratio, confidence_ratio, ' +
-  'report_sha256, error_code, created_at, updated_at, expires_at, finalized_at';
+  "report_sha256, error_code, created_at, updated_at, expires_at, finalized_at, " +
+  "report_json->>'authorizationState' as report_authorization_state";
 
 function toReport(value) {
   if (value == null) return null;
@@ -80,6 +81,10 @@ export function normalizeRunRow(row, { now = Date.now() } = {}) {
     bundleSetDigest: row.bundle_set_digest || null,
     riskScore: toNum(row.risk_score),
     riskGrade: row.risk_grade || null,
+    // The report's own authorization state, when one is stored: it
+    // can carry the stronger factual basis (e.g. 'verified') that
+    // the run row's 'admin' column cannot express (design §14.3).
+    reportAuthorizationState: row.report_authorization_state || null,
     findingsCount: toNum(row.findings_count),
     confirmedFindingsCount: toNum(row.confirmed_findings_count),
     coverageRatio: toNum(row.coverage_ratio),
@@ -534,14 +539,19 @@ export function decodeHistoryCursor(text) {
 }
 
 export async function listAdminHistory(db, { status = null, host = null, cursor = null, limit = 25, now = Date.now() } = {}) {
+  // The 'expired' filter is special: expiry is computed on read for
+  // live grants (the stored status stays created/running until the
+  // Phase 2 prune materializes it), so the filter matches live rows
+  // whose deadline has passed instead of a stored 'expired' value.
   const rows = await db.query(
     `/*ac:runs.history*/ select ${RUN_LIST_COLUMNS} from public.admin_scan_runs
-     where ($1::text is null or status = $1)
+     where ($1::text is null or status = $1
+            or ($1 = 'expired' and status in ('created', 'running') and expires_at <= $6::timestamptz))
        and ($2::text is null or target_host = $2)
        and ($3::timestamptz is null or (created_at, scan_id) < ($3::timestamptz, $4::text))
      order by created_at desc, scan_id desc
      limit $5`,
-    [status, host, cursor ? cursor.createdAt : null, cursor ? cursor.scanId : null, limit + 1]
+    [status, host, cursor ? cursor.createdAt : null, cursor ? cursor.scanId : null, limit + 1, new Date(now).toISOString()]
   );
   // RUN_LIST_COLUMNS omits report_json, so normalized rows carry
   // report: null — the list never ships report bodies.
