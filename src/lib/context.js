@@ -67,7 +67,18 @@ export function isSelfDemoTarget(url, selfOrigin) {
 // demo-host config only: the production demo origin is a public host
 // whose addresses pass the normal SSRF validation, so it never needs
 // the loopback allowance.
-export function policyForTarget(url, { attested = false, verified = false, selfOrigin = null } = {}) {
+//
+// Admin authorization (SPEC addendum 2026-10-29, admin design §13.2):
+// `adminAuthorized` is a boolean computed by scanstore.js from a
+// validated, durable admin scan grant — never from request data. It
+// is evaluated AFTER the verified cases so an admin scan of a demo or
+// DNS-verified target preserves that stronger factual basis instead
+// of relabelling it; for an ordinary unverified target it yields the
+// full policy with the distinct authorizationState 'admin'. An admin
+// scan is NOT an ownership-verified scan, and allowPrivate stays
+// false: the operator override unlocks the check set, never the SSRF
+// address rules.
+export function policyForTarget(url, { attested = false, verified = false, selfOrigin = null, adminAuthorized = false } = {}) {
   const host = url.hostname.toLowerCase();
   if (demoHosts().includes(host)) {
     return { policy: POLICIES.full, authorizationState: 'verified', allowPrivate: true };
@@ -77,6 +88,9 @@ export function policyForTarget(url, { attested = false, verified = false, selfO
   }
   if (verified) {
     return { policy: POLICIES.full, authorizationState: 'verified', allowPrivate: false };
+  }
+  if (adminAuthorized) {
+    return { policy: POLICIES.full, authorizationState: 'admin', allowPrivate: false };
   }
   return {
     policy: POLICIES.restricted,

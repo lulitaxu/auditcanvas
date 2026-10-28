@@ -112,14 +112,50 @@ export function checkFinalizeAllowed(ip) {
 // self-demo rule, DNS verification). Called identically by session
 // creation, the stateless descriptor, every step, and finalization —
 // always server-side, never from client-supplied policy fields.
-export function deriveScanPolicy(parsedUrl, { attested = false, selfOrigin = null } = {}) {
+//
+// Admin grants (SPEC addendum 2026-10-29, admin design §13.3): the
+// dedicated /api/admin/* services may pass a grant object they loaded
+// from the durable admin store and bound to a live admin session.
+// The grant is re-validated structurally HERE (shape, canonical
+// target match, expiry) before it can influence derivation; a
+// malformed grant is a programming error and throws, never a silent
+// downgrade to the public policy. Public callers omit the grant and
+// get exactly the derivation they always had. The grant object is
+// built only by src/lib/admin/scans.js from a database row — request
+// bodies are never a source for it.
+export function assertAdminGrantShape(adminGrant, parsedUrl) {
+  const bad = (why) => {
+    throw new Error(`Invalid admin grant passed to policy derivation: ${why}`);
+  };
+  if (!adminGrant || typeof adminGrant !== 'object') bad('not an object');
+  if (adminGrant.origin !== 'admin') bad('origin is not admin');
+  if (typeof adminGrant.scanId !== 'string' || !adminGrant.scanId) bad('missing scanId');
+  if (typeof adminGrant.sessionId !== 'string' || !adminGrant.sessionId) bad('missing sessionId');
+  if (typeof adminGrant.target !== 'string' || adminGrant.target !== parsedUrl.toString()) {
+    bad('target does not match the canonical target');
+  }
+  const expiresAt = Date.parse(adminGrant.expiresAt || '');
+  if (Number.isNaN(expiresAt) || expiresAt <= Date.now()) bad('grant is expired or has no expiry');
+  return adminGrant;
+}
+
+export function deriveScanPolicy(parsedUrl, { attested = false, selfOrigin = null, adminGrant = null } = {}) {
   const verification = verificationForHost(parsedUrl.hostname);
+  const grant = adminGrant ? assertAdminGrantShape(adminGrant, parsedUrl) : null;
   const { policy, authorizationState, allowPrivate } = policyForTarget(parsedUrl, {
     attested,
     verified: Boolean(verification),
     selfOrigin,
+    adminAuthorized: Boolean(grant),
   });
-  return { verification: verification || null, policy, authorizationState, allowPrivate };
+  return {
+    verification: verification || null,
+    policy,
+    authorizationState,
+    allowPrivate,
+    origin: grant ? 'admin' : 'public',
+    adminGrant: grant,
+  };
 }
 
 export function createScan({ url, attested = false, ip = 'unknown', rescanOf = null, selfOrigin = null }) {
@@ -128,7 +164,7 @@ export function createScan({ url, attested = false, ip = 'unknown', rescanOf = n
   // Ownership verification state is captured WITH the session at
   // creation: a completed DNS TXT verification for this exact hostname
   // unlocks the full policy; anything else stays restricted.
-  const { verification, policy, authorizationState, allowPrivate } = deriveScanPolicy(parsed, {
+  const { verification, policy, authorizationState, allowPrivate, origin } = deriveScanPolicy(parsed, {
     attested,
     selfOrigin,
   });
@@ -145,6 +181,7 @@ export function createScan({ url, attested = false, ip = 'unknown', rescanOf = n
   const session = {
     id,
     target,
+    origin,
     policyName: policy.name,
     authorizationState,
     verification: verification || null,
@@ -219,30 +256,49 @@ export function scanSummary(session) {
 // at every step and again at finalization.
 // ---------------------------------------------------------------------------
 
+// The descriptor shape shared by the public start route and the
+// admin start service (admin design §13.3). Pure: metering, cooldowns
+// and grant persistence live in the callers, and the policy fields
+// come from a deriveScanPolicy() result — never from request data.
+// Admin descriptors additionally carry the explicit origin marker;
+// public descriptors keep their historical shape (no origin field).
+export function buildScanDescriptor({ scanId, target, attested = false, rescanOf = null, createdAt, derived }) {
+  const descriptor = {
+    scanId,
+    target,
+    attested: Boolean(attested),
+    rescanOf: rescanOf || null,
+    createdAt,
+    status: 'running',
+    scanPolicy: derived.policy.name,
+    authorizationState: derived.authorizationState,
+    verification: derived.verification || null,
+    groupStatus: Object.fromEntries(GROUPS.map((g) => [g.id, 'queued'])),
+    groups: GROUPS.map((g) => ({ id: g.id, name: g.name })),
+    policy: POLICIES[derived.policy.name],
+  };
+  if (derived.origin === 'admin') descriptor.origin = 'admin';
+  return descriptor;
+}
+
 export function startScanDescriptor({ url, attested = false, ip = 'unknown', rescanOf = null, selfOrigin = null }) {
   const parsed = assertUrlAllowed(url); // throws SafeFetchError on bad input
   const target = parsed.toString();
-  const { verification, policy, authorizationState } = deriveScanPolicy(parsed, {
+  const derived = deriveScanPolicy(parsed, {
     attested,
     selfOrigin,
   });
   const now = new Date().toISOString();
   lastScanAtByTarget.set(target.toLowerCase(), Date.now());
   dailyCountByIp.set(todayKey(ip), (dailyCountByIp.get(todayKey(ip)) || 0) + 1);
-  return {
+  return buildScanDescriptor({
     scanId: randomBytes(18).toString('base64url'),
     target,
-    attested: Boolean(attested),
-    rescanOf: rescanOf || null,
+    attested,
+    rescanOf,
     createdAt: now,
-    status: 'running',
-    scanPolicy: policy.name,
-    authorizationState,
-    verification,
-    groupStatus: Object.fromEntries(GROUPS.map((g) => [g.id, 'queued'])),
-    groups: GROUPS.map((g) => ({ id: g.id, name: g.name })),
-    policy: POLICIES[policy.name],
-  };
+    derived,
+  });
 }
 
 const MAX_RESULTS_PER_GROUP = 64;
@@ -291,7 +347,12 @@ export class AssemblyError extends Error {
 //  - evidence is renumbered in canonical group order and every
 //    result's evidence references are rewritten through the per-group
 //    map — a reference to an ID the group never produced is rejected.
-export function assembleSession({ scanId, target, attested = false, rescanOf = null, createdAt = null, bundles, ip = 'unknown', selfOrigin = null }) {
+// `adminGrant` / `requesterIpHash` are used only by the admin
+// finalize service (admin design §13.6): the grant re-derives the
+// admin policy at assembly, and the audit-log creation entry records
+// the operator's source HASH — never a raw IP. Public finalize calls
+// omit both and assemble exactly as before.
+export function assembleSession({ scanId, target, attested = false, rescanOf = null, createdAt = null, bundles, ip = 'unknown', selfOrigin = null, adminGrant = null, requesterIpHash = null }) {
   if (typeof scanId !== 'string' || !/^[A-Za-z0-9_-]{16,64}$/.test(scanId)) {
     throw new AssemblyError('A valid scan ID is required to finalize a scan.');
   }
@@ -301,9 +362,10 @@ export function assembleSession({ scanId, target, attested = false, rescanOf = n
   }
   const parsed = assertUrlAllowed(target);
   const canonicalTarget = parsed.toString();
-  const { verification, policy, authorizationState } = deriveScanPolicy(parsed, {
+  const { verification, policy, authorizationState, origin } = deriveScanPolicy(parsed, {
     attested,
     selfOrigin,
+    adminGrant,
   });
 
   const bundleByGroup = new Map();
@@ -329,6 +391,14 @@ export function assembleSession({ scanId, target, attested = false, rescanOf = n
     const bundle = bundleByGroup.get(g.id);
     if (!verifyStepBundle(bundle, { scanId, target: canonicalTarget })) {
       throw new AssemblyError(`Step bundle for group ${g.id} failed signature verification.`);
+    }
+    // Admin assembly additionally requires every bundle to have been
+    // minted under the very policy the grant derives (admin design
+    // §13.6): a bundle signed under another policy — e.g. a public
+    // restricted bundle replayed into an admin finalize — is
+    // rejected even though its signature is genuine.
+    if (adminGrant && bundle.scanPolicy !== policy.name) {
+      throw new AssemblyError(`Step bundle for group ${g.id} was not minted under the admin-derived policy.`);
     }
   }
 
@@ -396,9 +466,42 @@ export function assembleSession({ scanId, target, attested = false, rescanOf = n
 
   const now = new Date().toISOString();
   const created = typeof createdAt === 'string' && !Number.isNaN(Date.parse(createdAt)) ? createdAt : now;
+  const verificationSummary = verification
+    ? { method: verification.method, hostname: verification.hostname, verifiedAt: verification.verifiedAt }
+    : null;
+  // Admin creation entry (admin design §13.3): provenance is the
+  // session grant, and the requester is recorded as a source hash —
+  // this report may be stored durably, and a raw IP never enters it.
+  const createdEntry =
+    origin === 'admin'
+      ? {
+          at: created,
+          event: 'scan-created',
+          origin: 'admin',
+          policyBasis: 'admin-session-grant',
+          target: canonicalTarget,
+          authorizationState,
+          verification: verificationSummary,
+          scanPolicy: policy.name,
+          requesterIpHash: requesterIpHash || null,
+          flow: 'stateless',
+          ...(rescanOf ? { rescanOf } : {}),
+        }
+      : {
+          at: created,
+          event: 'scan-created',
+          target: canonicalTarget,
+          authorizationState,
+          verification: verificationSummary,
+          scanPolicy: policy.name,
+          ip,
+          flow: 'stateless',
+          ...(rescanOf ? { rescanOf } : {}),
+        };
   const session = {
     id: scanId,
     target: canonicalTarget,
+    origin,
     policyName: policy.name,
     authorizationState,
     verification,
@@ -412,19 +515,7 @@ export function assembleSession({ scanId, target, attested = false, rescanOf = n
     ctx: { evidence: { items: mergedEvidence } },
     requests,
     auditLog: [
-      {
-        at: created,
-        event: 'scan-created',
-        target: canonicalTarget,
-        authorizationState,
-        verification: verification
-          ? { method: verification.method, hostname: verification.hostname, verifiedAt: verification.verifiedAt }
-          : null,
-        scanPolicy: policy.name,
-        ip,
-        flow: 'stateless',
-        ...(rescanOf ? { rescanOf } : {}),
-      },
+      createdEntry,
       { at: now, event: 'scan-complete', target: canonicalTarget, flow: 'stateless' },
     ],
   };

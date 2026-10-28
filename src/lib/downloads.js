@@ -92,13 +92,20 @@ export function assertClientReport(report) {
     scanPolicy: report.scanPolicy,
     dataSnapshots: { cve: { ...snapshot, stale: snapshotStale() } },
   };
+  // Origin/provenance claims in a client-supplied report are claims,
+  // not facts (admin design §13.8): a bare payload that calls itself
+  // an admin report does not become one. The bare path overwrites
+  // both with its own unverified values; trusted admin provenance
+  // exists only on reports the admin finalize route stored.
+  const { origin: _claimedOrigin, provenance: _claimedProvenance, ...rest } = report;
   return {
-    ...report,
+    ...rest,
     results,
     findings,
     fixFirst: scores.risk.drivers.slice(0, 5),
     scores,
     stamp,
+    origin: 'public',
     provenance: 'client-supplied-unverified',
     integrity: {
       unresolvedEvidenceIds: unresolved,
@@ -148,6 +155,7 @@ export function buildEvidenceBundle(report) {
     generatedAt: new Date().toISOString(),
     scanId: report.scanId,
     target: report.target,
+    origin: report.origin || 'public',
     authorizationState: report.authorizationState,
     verification: report.verification || null,
     scanPolicy: report.scanPolicy,

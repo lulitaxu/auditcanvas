@@ -344,7 +344,7 @@ function DiffBlock({ diff }) {
   );
 }
 
-export default function ReportView({ report, scanId, diff = null, onRescan = null, busy = false, bundleChain = null }) {
+export default function ReportView({ report, scanId, diff = null, onRescan = null, busy = false, bundleChain = null, downloadMode = 'public' }) {
   const [mode, setMode] = useState('owner');
   const technical = mode === 'technical';
 
@@ -354,13 +354,21 @@ export default function ReportView({ report, scanId, diff = null, onRescan = nul
   // step-bundle chain is available it travels with the report, and
   // the server rebuilds the artifact from the verified chain rather
   // than trusting the client-held report copy (security fix M4).
+  //
+  // Admin mode (admin design §13.8) is the one exception: the report
+  // is already stored server-side by the admin finalize route, so
+  // downloads are plain authenticated GETs against the stored-report
+  // endpoints and NO report body or bundle chain is sent.
   async function download(kind, filename) {
     try {
-      const res = await fetch(`/api/scan/${kind}`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(bundleChain ? { report, scan: bundleChain.scan, bundles: bundleChain.bundles } : { report }),
-      });
+      const res =
+        downloadMode === 'admin'
+          ? await fetch(`/api/admin/scans/${scanId}/${kind}`)
+          : await fetch(`/api/scan/${kind}`, {
+              method: 'POST',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify(bundleChain ? { report, scan: bundleChain.scan, bundles: bundleChain.bundles } : { report }),
+            });
       if (!res.ok) return;
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
@@ -452,7 +460,8 @@ export default function ReportView({ report, scanId, diff = null, onRescan = nul
           <h3>Reproducibility</h3>
           <div className="stamp">
             scanner <code>{report.stamp.scannerVersion}</code> · rules <code>{report.stamp.rulesVersion}</code> ·
-            model <code>{report.stamp.modelId}</code> · policy <code>{report.stamp.scanPolicy}</code> ·
+            model <code>{report.stamp.modelId}</code> · policy <code>{report.stamp.scanPolicy}</code>
+            {report.stamp.origin ? <> · origin <code>{report.stamp.origin}</code></> : null} ·
             CVE snapshot <code>{report.stamp.dataSnapshots.cve.snapshotVersion}</code>
             {report.stamp.dataSnapshots.cve.stale ? ' (stale — treat CVE coverage as dated)' : ''} ·{' '}
             {new Date(report.stamp.timestamp).toLocaleString()}
@@ -474,6 +483,7 @@ export default function ReportView({ report, scanId, diff = null, onRescan = nul
             {(report.auditLog || []).map((entry, i) => (
               <div key={i}>
                 <code>{entry.at}</code> — {entry.event}
+                {entry.origin ? ` · origin ${entry.origin}` : ''}
                 {entry.authorizationState ? ` · authorization ${entry.authorizationState}` : ''}
                 {entry.scanPolicy ? ` · policy ${entry.scanPolicy}` : ''}
               </div>

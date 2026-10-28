@@ -20,11 +20,22 @@ export function buildReport(session) {
 
   const unresolved = unresolvedEvidenceIds(results, evidence);
 
+  // Origin/provenance (SPEC addendum 2026-10-29, admin design §13.7):
+  // every report states which execution path produced it. Public
+  // reports say so explicitly ('public' / 'server') rather than
+  // relying on absence; admin reports are 'admin' / 'server-admin'.
+  // An admin origin never upgrades authorizationState — an
+  // unverified target scanned by the operator still reports
+  // authorizationState 'admin', not 'verified'.
+  const origin = session.origin || 'public';
+
   return {
     schemaVersion: EVIDENCE_SCHEMA_VERSION,
     scanId: session.id,
     rescanOf: session.rescanOf || null,
     target: session.target,
+    origin,
+    provenance: origin === 'admin' ? 'server-admin' : 'server',
     authorizationState: session.authorizationState,
     scanPolicy: session.policyName,
     status: session.status,
@@ -51,6 +62,8 @@ export function buildReport(session) {
       modelConfigured: config.configured,
       timestamp: new Date().toISOString(),
       target: session.target,
+      origin,
+      authorizationState: session.authorizationState,
       scanPolicy: session.policyName,
       dataSnapshots: {
         cve: { ...snapshot, stale: snapshotStale() },
