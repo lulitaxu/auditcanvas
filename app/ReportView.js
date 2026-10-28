@@ -82,12 +82,24 @@ function Graph({ report }) {
             if (!d) return null;
             const chainCls = chainClassByPair.get(`${e.from}|${e.to}`) || chainClassByPair.get(`${e.to}|${e.from}`);
             const traced = selected && (e.to === selected || selectedEvidence.has(e.from));
-            const cls = chainCls
+            const baseCls = chainCls
               ? `edge chain-${chainCls}`
               : traced
                 ? 'edge traced'
                 : 'edge base';
-            return <path key={i} d={d} className={cls} fill="none" />;
+            // Non-conditional edges draw in once on load (pathLength
+            // normalizes the dash animation). Conditional edges keep
+            // their real-unit dash pattern and are not draw-animated.
+            const drawable = chainCls !== 'conditional';
+            return (
+              <path
+                key={i}
+                d={d}
+                className={drawable ? `${baseCls} draw` : baseCls}
+                pathLength={drawable ? 1 : undefined}
+                fill="none"
+              />
+            );
           })}
           {graph.nodes.map((n) => {
             const p = pos.get(n.id);
@@ -100,9 +112,12 @@ function Graph({ report }) {
                 transform={`translate(${p.x},${p.y})`}
                 onClick={() => (n.kind === 'finding' ? setSelected(isSel && selected === n.id ? null : n.id) : null)}
               >
-                <rect width={NODE_W} height={NODE_H} rx="2" />
-                <text x="10" y="18" className="gtext-1">{n.line1}</text>
-                <text x="10" y="33" className="gtext-2">{n.line2}</text>
+                <rect width={NODE_W} height={NODE_H} rx="0" />
+                {n.kind === 'finding' ? (
+                  <rect className="marker" x="-4.5" y={NODE_H / 2 - 4.5} width="9" height="9" transform={`rotate(45 0 ${NODE_H / 2})`} />
+                ) : null}
+                <text x="12" y="18" className="gtext-1">{n.line1}</text>
+                <text x="12" y="33" className="gtext-2">{n.line2}</text>
                 {n.title ? <title>{n.title}</title> : null}
               </g>
             );

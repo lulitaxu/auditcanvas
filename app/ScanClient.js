@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import ReportView from './ReportView';
 
 const OUTCOME_LABEL = {
@@ -21,6 +21,22 @@ function LiveRow({ r }) {
       <div className="result-detail">{r.detail}</div>
     </li>
   );
+}
+
+// Display-only elapsed clock for the scan readout: ticks while the
+// scan runs, freezes on the report's own timestamp once it lands.
+function Elapsed({ from, to }) {
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    if (to) return undefined;
+    const id = setInterval(() => setTick((t) => t + 1), 500);
+    return () => clearInterval(id);
+  }, [to]);
+  const end = to ? new Date(to).getTime() : Date.now();
+  const secs = Math.max(0, Math.floor((end - new Date(from).getTime()) / 1000));
+  const mm = String(Math.floor(secs / 60)).padStart(2, '0');
+  const ss = String(secs % 60).padStart(2, '0');
+  return <>{`${mm}:${ss}`}</>;
 }
 
 function VerifyPanel({ targetUrl }) {
@@ -305,6 +321,28 @@ export default function ScanClient() {
       <h2>
         {report ? 'Report' : 'Scanning'}: {scan.target}
       </h2>
+      <div className="readout" aria-label="Scan readout">
+        <div>
+          <span className="ro-k">Target</span>
+          <span className="ro-v">{scan.target}</span>
+        </div>
+        <div>
+          <span className="ro-k">Scan ID</span>
+          <span className="ro-v">{scan.scanId}</span>
+        </div>
+        <div>
+          <span className="ro-k">Groups</span>
+          <span className="ro-v">
+            {scan.groups.filter((g) => groupStatus[g.id] === 'done').length}/{scan.groups.length} complete
+          </span>
+        </div>
+        <div>
+          <span className="ro-k">Elapsed</span>
+          <span className="ro-v amber">
+            <Elapsed from={scan.createdAt} to={report ? report.stamp.timestamp : null} />
+          </span>
+        </div>
+      </div>
       <p className="policy-line">
         Policy <strong>{scan.scanPolicy}</strong> · authorization{' '}
         <strong>{scan.authorizationState}</strong> · budget{' '}
@@ -340,6 +378,11 @@ export default function ScanClient() {
   return (
     <main>
       <header className="masthead">
+        <div className="hero-readout">
+          <span>Security audit instrument</span>
+          <span className="pipe">Scan → Reason → Refute → Fix order</span>
+          <span className="live">Non-destructive</span>
+        </div>
         <div className="wordmark">Audit<span>Canvas</span></div>
         <h1>See the auditor reason, not just scan</h1>
         <p>
