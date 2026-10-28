@@ -10,17 +10,34 @@
 //  - Model ID and key come from env (META_MODEL_ID / META_API_KEY). The
 //    exact ID and structured-output support on Arz's account are a
 //    Night 0 verification, not an assumption (SPEC.md).
+//  - Provider selection is env-only (AUDITOR_PROVIDER): Meta is the
+//    default and the submission provider; 'gemini' selects the dev
+//    stand-in transport in gemini.js behind this same call contract.
 //  - Maximum THREE model calls per scan: auditor, refutation, summary.
 //    No agent loops anywhere.
 //  - The model may explain, rank and dispute; it may not create, delete
 //    or silently downgrade a finding. Its output passes the report
 //    validator before anything is shown.
+import { geminiConfig, callGemini } from './gemini.js';
+
 export const MAX_MODEL_CALLS_PER_SCAN = 3;
 
+// Provider selection is by server env ONLY: AUDITOR_PROVIDER=gemini
+// selects the Gemini dev stand-in (gemini.js); anything else —
+// including unset — selects Meta (Muse Spark), the submission
+// provider. Never client-controllable. The returned config carries
+// the provider so the report stamp can state honestly which provider
+// and model actually produced the annotations.
+export function auditorProvider(env = process.env) {
+  return env.AUDITOR_PROVIDER === 'gemini' ? 'gemini' : 'meta';
+}
+
 export function auditorConfig(env = process.env) {
+  if (auditorProvider(env) === 'gemini') return geminiConfig(env);
   const apiKey = env.META_API_KEY || '';
   const modelId = env.META_MODEL_ID || '';
   return {
+    provider: 'meta',
     configured: Boolean(apiKey && modelId),
     modelId: modelId || null,
     apiBase: env.META_API_BASE || 'https://api.meta.ai/v1',
@@ -28,11 +45,26 @@ export function auditorConfig(env = process.env) {
   };
 }
 
+export function notConfiguredReason(config) {
+  return config && config.provider === 'gemini'
+    ? 'AUDITOR_PROVIDER=gemini but GEMINI_API_KEY is not set; report is engine-only (deterministic).'
+    : 'META_API_KEY / META_MODEL_ID are not set; report is engine-only (deterministic).';
+}
+
 // One bounded model call: timeout, one retry, JSON expected. Written
 // against a chat-completions shape with a JSON-parse fallback; the exact
 // endpoint/response_format support must be verified against the account
 // on Night 0 before this is exercised live (see HACKATHON.md).
-export async function callModel(config, { system, user }, { timeoutMs = 20000 } = {}) {
+//
+// Dispatch: a gemini-provider config goes to the Gemini transport
+// (gemini.js, same call contract); everything else takes the Meta
+// path below. The pipeline's call sites and the 3-call cap are
+// provider-agnostic — the cap lives in pipeline.js, not in either
+// transport.
+export async function callModel(config, payload, opts = {}) {
+  if (config && config.provider === 'gemini') return callGemini(config, payload, opts);
+  const { system, user } = payload;
+  const { timeoutMs = 20000 } = opts;
   const { default: fetchFn } = { default: globalThis.fetch };
   let lastErr = null;
   for (let attempt = 0; attempt < 2; attempt++) {
@@ -93,10 +125,9 @@ export function validateAuditorOutput(output, report) {
   return { ok: errors.length === 0, errors };
 }
 
-const NOT_CONFIGURED = {
-  status: 'not-configured',
-  reason: 'META_API_KEY / META_MODEL_ID are not set; report is engine-only (deterministic).',
-};
+function notConfigured(config, pass) {
+  return { status: 'not-configured', pass, reason: notConfiguredReason(config) };
+}
 
 // Pass 1 of 3: impact, prioritization, explanations, fix drafts — and
 // exploit-chain proposals. Chain proposals are NOT trusted: chains.js
@@ -104,7 +135,7 @@ const NOT_CONFIGURED = {
 // evidence requirements in code; the model's claimed classification is
 // recorded but never used.
 export async function auditorPass(report, config = auditorConfig()) {
-  if (!config.configured) return { ...NOT_CONFIGURED, pass: 'auditor' };
+  if (!config.configured) return notConfigured(config, 'auditor');
   try {
     const output = await callModel(config, {
       system:
@@ -138,6 +169,6 @@ export async function refutationPass(report, chainsResult, config = auditorConfi
 // generated deterministically (downloads.js) so it exists in every
 // report, engine-only included; this pass only drafts prose summary.
 export async function summaryPass(report, config = auditorConfig()) {
-  if (!config.configured) return { ...NOT_CONFIGURED, pass: 'summary' };
+  if (!config.configured) return notConfigured(config, 'summary');
   return { status: 'not-run', pass: 'summary', reason: 'Summary drafting lands after the auditor pass is verified live; the deterministic fix pack (downloads) does not depend on it.' };
 }

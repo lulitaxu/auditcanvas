@@ -18,6 +18,46 @@ import { deriveChains } from './chains.js';
 import { runRefutation } from './refutation.js';
 import { computeScores } from './scoring.js';
 
+// ---------------------------------------------------------------------------
+// Finalized-report cache, keyed by the verified bundle-set digest
+// (security fix H2). The stateless flow builds a fresh session object
+// per /finalize request, so the per-session cache inside
+// finalizeReport could not stop a repeat finalize from re-running the
+// model calls — the 3-call cap held per invocation, not per scan.
+// Keyed instead by the digest of the HMAC-signed bundle set (which
+// commits to the exact pipeline inputs), a repeat finalize of
+// identical bundles returns the cached report and makes ZERO new
+// model calls: the cap now holds per bundle-set by construction.
+// In-process and bounded (size + TTL), consistent with the codebase's
+// documented per-process best-effort limits on serverless.
+// ---------------------------------------------------------------------------
+
+const FINALIZE_CACHE_MAX = 50;
+const FINALIZE_CACHE_TTL_MS = 60 * 60 * 1000;
+const finalizeCache = new Map(); // digest -> { report, at }
+
+export async function finalizeReportForBundleSet(session, bundleSetKey) {
+  if (typeof bundleSetKey === 'string' && bundleSetKey) {
+    const hit = finalizeCache.get(bundleSetKey);
+    if (hit && Date.now() - hit.at < FINALIZE_CACHE_TTL_MS) {
+      // Keep the caller's session consistent with the cached report,
+      // so a later finalizeReport(session) on it (ID-keyed routes)
+      // also short-circuits instead of re-running the pipeline.
+      session.finalReport = hit.report;
+      return { report: hit.report, cacheHit: true };
+    }
+    if (hit) finalizeCache.delete(bundleSetKey);
+  }
+  const report = await finalizeReport(session);
+  if (typeof bundleSetKey === 'string' && bundleSetKey) {
+    finalizeCache.set(bundleSetKey, { report, at: Date.now() });
+    while (finalizeCache.size > FINALIZE_CACHE_MAX) {
+      finalizeCache.delete(finalizeCache.keys().next().value);
+    }
+  }
+  return { report, cacheHit: false };
+}
+
 export async function finalizeReport(session) {
   if (session.finalReport) return session.finalReport;
   const report = buildReport(session);
@@ -75,19 +115,28 @@ export async function finalizeReport(session) {
   report.fixFirst = report.scores.risk.drivers.slice(0, 5);
   report.findings = report.results.filter((r) => r.outcome === 'finding');
 
+  // If a transport fell back to a different model than configured
+  // (the Gemini adapter's capacity fallback), the stamp and the
+  // auditor block name the model that actually answered.
+  if (config.usedModelId && report.stamp) report.stamp.modelId = config.usedModelId;
+
   report.auditor = config.configured
     ? {
         status: auditorStatus.status === 'ok' ? 'annotated' : auditorStatus.status,
-        modelId: config.modelId,
+        provider: config.provider || 'meta',
+        modelId: config.usedModelId || config.modelId,
         reason: auditorStatus.reason || null,
         calls,
         callCap: MAX_MODEL_CALLS_PER_SCAN,
       }
     : {
         status: 'engine-only',
+        provider: config.provider || 'meta',
         modelId: null,
         reason:
-          'META_API_KEY / META_MODEL_ID are not set; this is the deterministic engine-only report. Auditor reasoning, chains, and refutation are shown as not run, never simulated.',
+          config.provider === 'gemini'
+            ? 'AUDITOR_PROVIDER=gemini but GEMINI_API_KEY is not set; this is the deterministic engine-only report. Auditor reasoning, chains, and refutation are shown as not run, never simulated.'
+            : 'META_API_KEY / META_MODEL_ID are not set; this is the deterministic engine-only report. Auditor reasoning, chains, and refutation are shown as not run, never simulated.',
         calls: [],
         callCap: MAX_MODEL_CALLS_PER_SCAN,
       };

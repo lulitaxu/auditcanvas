@@ -324,19 +324,22 @@ function DiffBlock({ diff }) {
   );
 }
 
-export default function ReportView({ report, scanId, diff = null, onRescan = null, busy = false }) {
+export default function ReportView({ report, scanId, diff = null, onRescan = null, busy = false, bundleChain = null }) {
   const [mode, setMode] = useState('owner');
   const technical = mode === 'technical';
 
-  // Downloads are built statelessly from the finalized report itself
-  // (POST /api/scan/evidence, /api/scan/fix-pack): on serverless there
-  // is no durable per-scan server state for an ID-keyed GET to find.
+  // Downloads are built statelessly (POST /api/scan/evidence,
+  // /api/scan/fix-pack): on serverless there is no durable per-scan
+  // server state for an ID-keyed GET to find. When the signed
+  // step-bundle chain is available it travels with the report, and
+  // the server rebuilds the artifact from the verified chain rather
+  // than trusting the client-held report copy (security fix M4).
   async function download(kind, filename) {
     try {
       const res = await fetch(`/api/scan/${kind}`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ report }),
+        body: JSON.stringify(bundleChain ? { report, scan: bundleChain.scan, bundles: bundleChain.bundles } : { report }),
       });
       if (!res.ok) return;
       const blob = await res.blob();

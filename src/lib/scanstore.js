@@ -29,11 +29,13 @@ import {
   unresolvedEvidenceIds,
   redactString,
 } from './evidence.js';
+import { verifyStepBundle } from './bundlesig.js';
 
 const sessions = new Map();
 const lastScanAtByTarget = new Map();
 const dailyCountByIp = new Map();
 const stepCountByIp = new Map();
+const finalizeCountByIp = new Map();
 
 export const TARGET_COOLDOWN_MS = 30 * 1000;
 export const DAILY_QUOTA_PER_IP = 20;
@@ -41,6 +43,13 @@ export const DAILY_QUOTA_PER_IP = 20;
 // steps, and the cap leaves room for retries without letting the step
 // endpoint become an unmetered fetch proxy.
 export const DAILY_STEP_CAP_PER_IP = DAILY_QUOTA_PER_IP * GROUPS.length * 4;
+// Finalize invocations are metered too (security fix H2): finalize is
+// where the model calls live, so it must never be an unmetered POST.
+// The cap is generous against the scan quota (retries, downloads via
+// the signed chain) — the real teeth are bundle signing (forgeries
+// are rejected before any model call) and the finalized-report cache
+// in pipeline.js (a repeat finalize makes zero new model calls).
+export const DAILY_FINALIZE_CAP_PER_IP = DAILY_QUOTA_PER_IP * GROUPS.length;
 
 function todayKey(ip) {
   return `${new Date().toISOString().slice(0, 10)}:${ip}`;
@@ -82,6 +91,19 @@ export function checkStepAllowed(ip) {
     return { ok: false, status: 429, reason: 'Daily scan-step quota for this IP is exhausted.' };
   }
   stepCountByIp.set(todayKey(ip), count + 1);
+  return { ok: true };
+}
+
+// Meter one finalize invocation against the per-IP daily finalize cap
+// (security fix H2 — /finalize previously never called any abuse
+// check, so forged finalize POSTs could each trigger the pipeline's
+// model calls). Same shape as checkStepAllowed.
+export function checkFinalizeAllowed(ip) {
+  const count = finalizeCountByIp.get(todayKey(ip)) || 0;
+  if (count >= DAILY_FINALIZE_CAP_PER_IP) {
+    return { ok: false, status: 429, reason: 'Daily finalize quota for this IP is exhausted.' };
+  }
+  finalizeCountByIp.set(todayKey(ip), count + 1);
   return { ok: true };
 }
 
@@ -251,8 +273,13 @@ export class AssemblyError extends Error {
 }
 
 // Assemble a completed scan session from client-carried per-group
-// bundles ({ group, results, evidence, requests }). Everything the
-// report will claim is re-established here, server-side:
+// bundles ({ group, scanPolicy, results, evidence, requests, sig }).
+// Everything the report will claim is re-established here,
+// server-side:
+//  - every bundle's HMAC signature is verified against this scanId
+//    and the canonical target before its contents are trusted
+//    (security fix H1 — unsigned/tampered/transplanted bundles are
+//    rejected outright);
 //  - the target is re-validated and the policy re-derived (a bundle
 //    claiming a stronger policy than the server derives is stamped
 //    with the derived one — claims are display-only);
@@ -289,6 +316,20 @@ export function assembleSession({ scanId, target, attested = false, rescanOf = n
   }
   for (const g of GROUPS) {
     if (!bundleByGroup.has(g.id)) throw new AssemblyError(`Missing step bundle for group ${g.id}; the scan is incomplete.`);
+  }
+
+  // Provenance FIRST (security fix H1): every bundle must carry the
+  // /step route's HMAC signature over its exact contents, bound to
+  // THIS scanId and THIS canonical target (both supplied here, never
+  // read out of the bundle). Unsigned, tampered, or cross-scan
+  // transplanted bundles are rejected before any schema validation of
+  // their contents is trusted — a client can no longer mint a report
+  // for a scan that never ran.
+  for (const g of GROUPS) {
+    const bundle = bundleByGroup.get(g.id);
+    if (!verifyStepBundle(bundle, { scanId, target: canonicalTarget })) {
+      throw new AssemblyError(`Step bundle for group ${g.id} failed signature verification.`);
+    }
   }
 
   const mergedEvidence = [];

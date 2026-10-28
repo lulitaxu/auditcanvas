@@ -16,18 +16,42 @@
 import {
   EVIDENCE_SCHEMA_VERSION,
   SCANNER_VERSION,
+  RULES_VERSION,
   validateCheckResult,
   validateEvidenceItem,
   unresolvedEvidenceIds,
 } from './evidence.js';
 import { createZip } from './zip.js';
+import { computeScores } from './scoring.js';
+import { auditorConfig } from './auditor.js';
+import { snapshotStamp, snapshotStale } from './scanner/stack.js';
+import { assembleSession, cacheSession } from './scanstore.js';
+import { finalizeReportForBundleSet } from './pipeline.js';
+import { bundleSetDigest } from './bundlesig.js';
 
 // A report supplied by the client (the stateless flow keeps finalized
 // reports client-side; downloads and diffs post them back) is never
-// trusted as-is: every result and evidence item must pass the same
-// schema validators the scanner's own output passes, every evidence
-// reference must resolve inside the bundle, and the integrity block
-// is recomputed here rather than taken from the payload.
+// trusted as-is. Two paths (security fix M4):
+//
+//  - SIGNED CHAIN: the request also carries the scan descriptor and
+//    the HMAC-signed step bundles. The server assembles and finalizes
+//    the scan itself (assembleSession verifies every signature;
+//    the finalized report comes from the bundle-set cache when warm)
+//    and the download is built from THAT report. A claimed chain
+//    whose signatures fail is rejected, never silently downgraded.
+//
+//  - BARE REPORT: schema validation only proves the payload is
+//    well-formed, not that any scan produced it. So the scores are
+//    RECOMPUTED from the results with the deterministic formula, the
+//    reproducibility stamp is RE-DERIVED from this server's actual
+//    state (a payload claiming a configured model on an engine-only
+//    server is corrected), per-result refutation annotations are
+//    stripped (only the server pipeline may attach them — in a bare
+//    payload they are unattested claims that could launder Risk),
+//    and integrity is labelled honestly: provenance
+//    'client-supplied-unverified', ok:false, with any unresolved
+//    evidence references listed. A bare report never receives the
+//    server path's integrity.ok:true.
 export function assertClientReport(report) {
   if (!report || typeof report !== 'object') throw new Error('A report object is required.');
   if (typeof report.target !== 'string' || !report.target) throw new Error('Report has no target.');
@@ -46,8 +70,68 @@ export function assertClientReport(report) {
     if (errs.length) throw new Error(`Invalid evidence item in report: ${errs.join('; ')}`);
   }
   const unresolved = unresolvedEvidenceIds(report.results, report.evidence);
-  if (unresolved.length) throw new Error(`Report evidence references do not resolve: ${unresolved.join(', ')}`);
-  return { ...report, integrity: { unresolvedEvidenceIds: [], ok: true } };
+
+  const results = report.results.map((r) => {
+    if (!r || typeof r !== 'object' || !('refutation' in r)) return r;
+    const { refutation, ...rest } = r;
+    void refutation;
+    return rest;
+  });
+  const scores = computeScores(results);
+  const findings = results.filter((r) => r.outcome === 'finding');
+  const config = auditorConfig();
+  const snapshot = snapshotStamp();
+  const stamp = {
+    scannerVersion: SCANNER_VERSION,
+    rulesVersion: RULES_VERSION,
+    provider: config.provider || 'meta',
+    modelId: config.modelId || 'none (engine-only)',
+    modelConfigured: config.configured,
+    timestamp: new Date().toISOString(),
+    target: report.target,
+    scanPolicy: report.scanPolicy,
+    dataSnapshots: { cve: { ...snapshot, stale: snapshotStale() } },
+  };
+  return {
+    ...report,
+    results,
+    findings,
+    fixFirst: scores.risk.drivers.slice(0, 5),
+    scores,
+    stamp,
+    provenance: 'client-supplied-unverified',
+    integrity: {
+      unresolvedEvidenceIds: unresolved,
+      ok: false,
+      provenance: 'client-supplied-unverified',
+      scoresRecomputed: true,
+      stampRederived: true,
+    },
+  };
+}
+
+// Resolve the report a download is built from: the signed-chain path
+// when the request carries scan + bundles, the bare-report path
+// otherwise. See the M4 note above.
+export async function resolveDownloadReport(body, { ip = 'unknown', selfOrigin = null } = {}) {
+  const scan = body && typeof body.scan === 'object' && body.scan !== null ? body.scan : null;
+  if (scan && Array.isArray(body.bundles)) {
+    const session = assembleSession({
+      scanId: scan.scanId,
+      target: typeof scan.target === 'string' ? scan.target : '',
+      attested: scan.attested === true,
+      rescanOf: typeof scan.rescanOf === 'string' ? scan.rescanOf : null,
+      createdAt: typeof scan.createdAt === 'string' ? scan.createdAt : null,
+      bundles: body.bundles,
+      ip,
+      selfOrigin,
+    });
+    const bundleSetKey = bundleSetDigest({ scanId: session.id, target: session.target, bundles: body.bundles });
+    const { report } = await finalizeReportForBundleSet(session, bundleSetKey);
+    cacheSession(session);
+    return report;
+  }
+  return assertClientReport(body && body.report);
 }
 
 export const EVIDENCE_FILENAME = 'auditcanvas-evidence.json';
@@ -76,6 +160,7 @@ export function buildEvidenceBundle(report) {
     chains: report.chains || { status: 'not-run', chains: [], unproven: [], invalid: [] },
     refutation: report.refutation || { status: 'not-run', entries: [] },
     auditLog: report.auditLog,
+    provenance: report.provenance || 'server',
     integrity: report.integrity,
     howToValidate:
       'Every finding in results[] carries evidenceIds; each must resolve to an item in evidence[] with the same id. Check outcomes are one of pass / finding / inconclusive / not-assessed. Scores are deterministic: recompute them from results[] using the formulas in scores (risk.formula, coverage.formula, confidence.formula).',

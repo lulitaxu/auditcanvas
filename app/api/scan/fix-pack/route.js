@@ -1,15 +1,16 @@
-import { buildFixPack, assertClientReport, FIX_PACK_FILENAME } from '../../../../src/lib/downloads.js';
+import { buildFixPack, resolveDownloadReport, FIX_PACK_FILENAME } from '../../../../src/lib/downloads.js';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
 
-// POST /api/scan/fix-pack { report } — auditcanvas-fix-pack.zip,
-// built statelessly from the finalized report the client holds (same
-// validation as the evidence download). One suggested patch per
-// finding, each headed with its finding ID, evidence IDs, stack,
-// conditions, and placement; labelled a suggested patch, untested
-// until a rescan verifies the fix.
+// POST /api/scan/fix-pack { report, scan?, bundles? } —
+// auditcanvas-fix-pack.zip, built statelessly (same report resolution
+// as the evidence download: verified signed chain when carried, else
+// the recomputed/unverified bare-report path — security fix M4). One
+// suggested patch per finding, each headed with its finding ID,
+// evidence IDs, stack, conditions, and placement; labelled a
+// suggested patch, untested until a rescan verifies the fix.
 export async function POST(request) {
   let body;
   try {
@@ -17,8 +18,13 @@ export async function POST(request) {
   } catch {
     return Response.json({ error: 'Request body must be JSON.' }, { status: 400 });
   }
+  const ip =
+    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+    request.headers.get('x-real-ip') ||
+    'local';
+  const selfOrigin = new URL(request.url).origin;
   try {
-    const report = assertClientReport(body.report);
+    const report = await resolveDownloadReport(body, { ip, selfOrigin });
     const zip = buildFixPack(report);
     return new Response(zip, {
       headers: {

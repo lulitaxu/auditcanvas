@@ -53,11 +53,13 @@ const { createScanContext, POLICIES, policyForTarget } = await import('../src/li
 const { runAllGroups, runGroup } = await import('../src/lib/scanner/index.js');
 const { buildChains, deriveChains } = await import('../src/lib/chains.js');
 const { applyRefutation, refutationScope } = await import('../src/lib/refutation.js');
-const { buildEvidenceBundle, buildFixPack, EVIDENCE_FILENAME, FIX_PACK_FILENAME } = await import('../src/lib/downloads.js');
+const { buildEvidenceBundle, buildFixPack, assertClientReport, EVIDENCE_FILENAME, FIX_PACK_FILENAME } = await import('../src/lib/downloads.js');
 const { listZipEntries, readZipEntry } = await import('../src/lib/zip.js');
 const ownership = await import('../src/lib/ownership.js');
 const { createScan, startScanDescriptor, assembleSession, AssemblyError } = await import('../src/lib/scanstore.js');
-const { finalizeReport } = await import('../src/lib/pipeline.js');
+const { finalizeReport, finalizeReportForBundleSet } = await import('../src/lib/pipeline.js');
+const { signStepBundle, bundleSetDigest } = await import('../src/lib/bundlesig.js');
+const { auditorConfig } = await import('../src/lib/auditor.js');
 const { diffReports } = await import('../src/lib/diff.js');
 const fixtures = await import('../fixtures/server.mjs');
 
@@ -451,9 +453,17 @@ const corsProposal = (extraNodes = []) => ({
 
   const bundles = await stepBundles('http://127.0.0.1/');
   const rawEvidenceCount = bundles.reduce((n, b) => n + b.evidence.length, 0);
+  // Assembly now requires the /step route's HMAC signature on every
+  // bundle (security fix H1): sign the fixture bundles for the exact
+  // scan identity they will be assembled under, the way the route
+  // does in production.
+  const SIGN_ID = 'stateless-verify-0001';
+  const SIGN_TARGET = 'http://127.0.0.1/';
+  const signAll = (list, scanId, target) => list.map((b) => ({ ...b, sig: signStepBundle({ scanId, target, bundle: b }) }));
+  const signedBundles = signAll(bundles, SIGN_ID, SIGN_TARGET);
   const session = assembleSession({
-    scanId: 'stateless-verify-0001', target: 'http://127.0.0.1/', attested: true,
-    bundles, ip: 'verify-stateless',
+    scanId: SIGN_ID, target: SIGN_TARGET, attested: true,
+    bundles: signedBundles, ip: 'verify-stateless',
   });
   check('stateless: assembly derives the policy server-side (demo host -> full)',
     session.policyName === 'full' && session.status === 'complete');
@@ -473,14 +483,19 @@ const corsProposal = (extraNodes = []) => ({
     statelessReport.scores.risk.score > 0 && statelessReport.integrity.ok === true,
     JSON.stringify(statelessReport.scores.risk));
 
-  // ASSEMBLY REFUSES TAMPERED BUNDLES.
+  // ASSEMBLY REFUSES TAMPERED BUNDLES. Content mutations are RE-SIGNED
+  // for the assembly identity, so these keep exercising the schema /
+  // reference validators themselves — unsigned or mis-signed bundles
+  // are a separate rejection class, covered by the hardening checks
+  // below.
   const clone = (v) => JSON.parse(JSON.stringify(v));
   const expectReject = (name, mutate) => {
-    const bad = clone(bundles);
+    const bad = clone(signedBundles);
     mutate(bad);
+    const resigned = signAll(bad, 'stateless-verify-0002', SIGN_TARGET);
     let rejected = false;
     try {
-      assembleSession({ scanId: 'stateless-verify-0002', target: 'http://127.0.0.1/', bundles: bad, ip: 'verify-stateless' });
+      assembleSession({ scanId: 'stateless-verify-0002', target: SIGN_TARGET, bundles: resigned, ip: 'verify-stateless' });
     } catch (err) {
       rejected = err instanceof AssemblyError;
     }
@@ -499,12 +514,220 @@ const corsProposal = (extraNodes = []) => ({
   expectReject('stateless: a duplicated group bundle is rejected', (bad) => {
     bad.push(clone(bad[0]));
   });
+  // The same raw results, signed for the FOREIGN scan identity (as if
+  // its own steps had produced them): assembly must still stamp the
+  // policy the SERVER derives for that target, never a claimed one.
+  // (Changed by the H1 fix: previously the unsigned bundles could be
+  // carried across identities freely; now the transplant itself needs
+  // a valid signature for the identity it is assembled under.)
   const foreign = assembleSession({
     scanId: 'stateless-verify-0003', target: 'https://unverified-fixture.test/', attested: true,
-    bundles: clone(bundles).map((b) => ({ ...b, requests: [] })), ip: 'verify-stateless',
+    bundles: signAll(clone(bundles), 'stateless-verify-0003', 'https://unverified-fixture.test/'), ip: 'verify-stateless',
   });
   check('stateless: assembly stamps the DERIVED policy, never a claimed one (unverified -> restricted)',
     foreign.policyName === 'restricted' && foreign.authorizationState === 'attested');
+
+  // --- Hardening: bundle provenance (H1), finalize cache (H2),
+  // download integrity (M4). 2026-10-29 sweep fixes. ---
+  const expectSigReject = (name, bundlesArg, scanId = SIGN_ID, target = SIGN_TARGET) => {
+    let rejected = false;
+    try {
+      assembleSession({ scanId, target, bundles: bundlesArg, ip: 'verify-stateless' });
+    } catch (err) {
+      rejected = err instanceof AssemblyError && /signature/.test(err.message);
+    }
+    check(name, rejected);
+  };
+  expectSigReject('hardening: an unsigned step bundle is rejected at assembly',
+    clone(signedBundles).map(({ sig, ...rest }) => rest));
+  {
+    const tampered = clone(signedBundles);
+    const hb = tampered.find((b) => b.group === 'headers');
+    const idx = hb.results.findIndex((r) => r.outcome === 'finding');
+    if (idx >= 0) hb.results.splice(idx, 1);
+    expectSigReject('hardening: a bundle tampered after signing (finding deleted) is rejected', tampered);
+    check('hardening: the tamper case actually removed a finding first', idx >= 0);
+  }
+  expectSigReject('hardening: bundles transplanted into another scan are rejected',
+    clone(signedBundles), 'stateless-verify-0099', SIGN_TARGET);
+  expectSigReject('hardening: bundles transplanted to another target are rejected',
+    clone(signedBundles), SIGN_ID, 'https://unverified-fixture.test/');
+  {
+    // Repeat finalize of the identical signed bundle set: the second
+    // call must be served from the finalized-report cache (same
+    // report object), which is what makes the 3-model-call cap hold
+    // per bundle-set rather than per invocation.
+    const key = bundleSetDigest({ scanId: SIGN_ID, target: SIGN_TARGET, bundles: signedBundles });
+    const sA = assembleSession({ scanId: SIGN_ID, target: SIGN_TARGET, attested: true, bundles: clone(signedBundles), ip: 'verify-stateless' });
+    const first = await finalizeReportForBundleSet(sA, key);
+    const sB = assembleSession({ scanId: SIGN_ID, target: SIGN_TARGET, attested: true, bundles: clone(signedBundles), ip: 'verify-stateless' });
+    const second = await finalizeReportForBundleSet(sB, key);
+    check('hardening: repeat finalize of the same bundle set hits the report cache (zero new model calls)',
+      first.cacheHit === false && second.cacheHit === true && second.report === first.report);
+  }
+  {
+    // A bare client report cannot inflate itself (M4): claimed scores
+    // and stamp are discarded, scores recomputed deterministically,
+    // the stamp re-derived from this server's actual state, and
+    // integrity labelled unverified with unresolved refs listed.
+    const cfg = auditorConfig();
+    const bare = {
+      scanId: 'bare-1', target: 'https://shop.example/', authorizationState: 'verified', scanPolicy: 'full',
+      status: 'complete', startedAt: '2026-10-28T00:00:00.000Z', auditLog: [],
+      scores: { risk: { score: 0, grade: 'A' }, coverage: { ratio: 1 }, confidence: { ratio: 1 } },
+      stamp: { modelId: 'forged-model', modelConfigured: true, scannerVersion: '9.9.9' },
+      integrity: { unresolvedEvidenceIds: [], ok: true },
+      results: [
+        { checkId: 'headers.hsts-missing', findingId: 'f-headers-hsts-missing', group: 'headers', outcome: 'finding', severity: 'medium', title: 'HSTS missing', detail: 'No HSTS header.', evidenceIds: ['ev-0001'], inference: false },
+        { checkId: 'tls.chain', findingId: null, group: 'tls', outcome: 'pass', severity: null, title: 'Chain ok', detail: 'ok', evidenceIds: ['ev-0001'], inference: false },
+        { checkId: 'headers.csp', findingId: null, group: 'headers', outcome: 'pass', severity: null, title: 'CSP ok', detail: 'ok', evidenceIds: ['ev-9999'], inference: false },
+      ],
+      evidence: [{
+        id: 'ev-0001', kind: 'http-response', target: 'https://shop.example/', at: '2026-10-28T00:00:00.000Z',
+        data: { status: 200, finalUrl: 'https://shop.example/', redirectCount: 0, headers: {}, headerNames: [], setCookies: [], bodyBytes: 10, truncated: false },
+      }],
+    };
+    const cleaned = assertClientReport(bare);
+    check('hardening: bare client report gets recomputed scores, not its claimed ones',
+      cleaned.scores.risk.score === computeScores(cleaned.results).risk.score && cleaned.scores.risk.score === 15,
+      JSON.stringify(cleaned.scores.risk));
+    check('hardening: bare client report stamp is re-derived from server state',
+      cleaned.stamp.modelConfigured === cfg.configured && cleaned.stamp.modelId === (cfg.modelId || 'none (engine-only)')
+      && cleaned.stamp.scannerVersion !== '9.9.9', JSON.stringify(cleaned.stamp));
+    check('hardening: bare client report integrity is unverified with unresolved refs listed',
+      cleaned.integrity.ok === false && cleaned.integrity.provenance === 'client-supplied-unverified'
+      && cleaned.integrity.unresolvedEvidenceIds.some((x) => x.includes('ev-9999')), JSON.stringify(cleaned.integrity));
+    // An invented check can no longer pass the report validator.
+    let inventedRejected = false;
+    try {
+      assertClientReport({ ...bare, results: [{ checkId: 'headers.invented-check', findingId: 'f-headers-invented-check', group: 'headers', outcome: 'finding', severity: 'high', title: 'x', detail: 'y', evidenceIds: [], inference: false }] });
+    } catch { inventedRejected = true; }
+    check('hardening: an invented checkId is rejected by the report validator (catalog)', inventedRejected);
+  }
+}
+
+// --- Gemini adapter contract (stubbed fetch; no live key) ---
+// The adapter is a transport behind callModel; these checks prove the
+// request shape, that well-formed output passes the SAME validators
+// the Meta path uses, that validator-level rejections still reject,
+// and that provider=gemini without a key degrades to an honest
+// engine-only report instead of crashing.
+{
+  const { callModel, auditorPass } = await import('../src/lib/auditor.js');
+  const { runRefutation } = await import('../src/lib/refutation.js');
+  const realFetch = globalThis.fetch;
+  const savedEnv = {
+    AUDITOR_PROVIDER: process.env.AUDITOR_PROVIDER,
+    GEMINI_API_KEY: process.env.GEMINI_API_KEY,
+    GEMINI_MODEL: process.env.GEMINI_MODEL,
+  };
+  const gemReport = {
+    target: 'https://shop.example/',
+    results: [{
+      checkId: 'cors.credentialed-exposure', findingId: 'f-cors-credentialed-exposure', group: 'cors',
+      outcome: 'finding', severity: 'high', title: 'CORS allows credentialed reads', detail: 'Reflected origin with credentials allowed.',
+      evidenceIds: ['ev-0001'], inference: false,
+    }],
+    evidence: [{
+      id: 'ev-0001', kind: 'http-response', target: 'https://shop.example/', at: '2026-10-28T00:00:00.000Z',
+      data: { status: 200, headers: { 'access-control-allow-origin': 'https://ac-probe.invalid', 'access-control-allow-credentials': 'true' }, setCookies: [], truncated: false },
+    }],
+  };
+  const geminiReply = (payload) => ({
+    ok: true, status: 200,
+    json: async () => ({ candidates: [{ content: { parts: [{ text: typeof payload === 'string' ? payload : JSON.stringify(payload) }] } }] }),
+    text: async () => '',
+  });
+  try {
+    process.env.AUDITOR_PROVIDER = 'gemini';
+    process.env.GEMINI_API_KEY = 'contract-test-key';
+    delete process.env.GEMINI_MODEL;
+    const cfg = auditorConfig();
+    check('gemini: AUDITOR_PROVIDER=gemini selects the gemini provider with the default model',
+      cfg.provider === 'gemini' && cfg.configured === true && cfg.modelId === 'gemini-3.8-flash');
+
+    // (a) request shape: endpoint, key header (never in the URL),
+    // system/user mapping, JSON response mode.
+    let captured = null;
+    globalThis.fetch = async (url, init) => { captured = { url, init }; return geminiReply({ findingNotes: [] }); };
+    await callModel(cfg, { system: 'SYS-PROMPT', user: 'USER-PROMPT' });
+    const sentBody = JSON.parse(captured.init.body);
+    check('gemini: request hits the generateContent endpoint for the configured model, key in header only',
+      captured.url === 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent'
+      && captured.init.headers['x-goog-api-key'] === 'contract-test-key'
+      && !captured.url.includes('contract-test-key') && !captured.init.body.includes('contract-test-key'),
+      captured.url);
+    check('gemini: system/user map to systemInstruction/contents with JSON response mode',
+      sentBody.systemInstruction.parts[0].text === 'SYS-PROMPT'
+      && sentBody.contents[0].parts[0].text === 'USER-PROMPT'
+      && sentBody.generationConfig.responseMimeType === 'application/json');
+
+    // (b) a well-formed stubbed auditor response passes the existing
+    // report validator (verbatim quote, known IDs).
+    globalThis.fetch = async () => geminiReply({
+      findingNotes: [{ findingId: 'f-cors-credentialed-exposure', evidenceIds: ['ev-0001'], quote: 'ac-probe.invalid', impact: 'Any site can read credentialed responses.', priority: 1 }],
+    });
+    const okPass = await auditorPass(gemReport, cfg);
+    check('gemini: well-formed auditor output passes the report validator', okPass.status === 'ok' && okPass.output.findingNotes.length === 1, JSON.stringify(okPass));
+
+    // Refutation through the same transport: in-scope counterargument
+    // recorded, outcome decided deterministically from the evidence.
+    globalThis.fetch = async () => geminiReply({
+      counterarguments: [
+        { findingId: 'f-cors-credentialed-exposure', counterargument: 'The probe origin is contrived.' },
+        { findingId: 'f-out-of-scope', counterargument: 'must be filtered' },
+      ],
+    });
+    const ref = await runRefutation(gemReport, { chains: [] }, cfg);
+    check('gemini: refutation output flows through scope filtering + deterministic assessment',
+      ref.status === 'ok' && ref.entries.length === 1 && ref.entries[0].outcome === 'survived-refutation'
+      && ref.entries[0].counterargument === 'The probe origin is contrived.', JSON.stringify(ref.entries));
+
+    // (c) validator-level rejections still reject on this provider:
+    // an unknown finding ID is a rejected pass, non-JSON is a failure.
+    globalThis.fetch = async () => geminiReply({ findingNotes: [{ findingId: 'f-invented', evidenceIds: [], quote: '', impact: 'x' }] });
+    const rejected = await auditorPass(gemReport, cfg);
+    check('gemini: auditor output citing an unknown finding is rejected by the same validator', rejected.status === 'rejected', JSON.stringify(rejected));
+    globalThis.fetch = async () => geminiReply('this is not json');
+    const failed = await auditorPass(gemReport, cfg);
+    check('gemini: a non-JSON model response fails the pass, never passes silently', failed.status === 'failed', JSON.stringify(failed));
+
+    // Pipeline wiring is provider-agnostic: with gemini configured,
+    // finalize annotates and both model calls land in the same
+    // calls[] accounting under the cap.
+    globalThis.fetch = async () => geminiReply({ findingNotes: [], counterarguments: [{ findingId: 'f-cors-credentialed-exposure', counterargument: 'Contrived probe.' }] });
+    const mkSession = () => ({
+      id: 'gemini-wired-0001', target: 'https://shop.example/', policyName: 'full', authorizationState: 'verified',
+      verification: null, attested: false, rescanOf: null, status: 'complete',
+      createdAt: '2026-10-29T00:00:00.000Z', updatedAt: '2026-10-29T00:00:00.000Z', groupStatus: {},
+      results: [gemReport.results[0]], ctx: { evidence: { items: gemReport.evidence } }, auditLog: [],
+    });
+    const wired = await finalizeReport(mkSession());
+    check('gemini: finalize with the gemini provider annotates and stamps provider + model honestly',
+      wired.auditor.status === 'annotated' && wired.auditor.provider === 'gemini' && wired.auditor.modelId === 'gemini-3.8-flash'
+      && wired.stamp.provider === 'gemini' && wired.stamp.modelConfigured === true && wired.stamp.modelId === 'gemini-3.8-flash',
+      JSON.stringify({ auditor: wired.auditor, stamp: wired.stamp }));
+    check('gemini: auditor + refutation calls are counted under the same 3-call cap',
+      Array.isArray(wired.auditor.calls) && wired.auditor.calls.length === 2 && wired.auditor.callCap === 3, JSON.stringify(wired.auditor.calls));
+
+    // (d) provider=gemini with NO key: honest engine-only, no crash.
+    delete process.env.GEMINI_API_KEY;
+    const noKeyCfg = auditorConfig();
+    check('gemini: without GEMINI_API_KEY the provider reports unconfigured',
+      noKeyCfg.provider === 'gemini' && noKeyCfg.configured === false);
+    const noKeyPass = await auditorPass(gemReport, noKeyCfg);
+    check('gemini: auditor pass without a key is not-configured, not a crash', noKeyPass.status === 'not-configured');
+    const degraded = await finalizeReport(mkSession());
+    check('gemini: finalize without a key reports engine-only with the gemini provider in the stamp',
+      degraded.auditor.status === 'engine-only' && degraded.stamp.provider === 'gemini' && degraded.stamp.modelConfigured === false,
+      JSON.stringify({ auditor: degraded.auditor, stamp: degraded.stamp }));
+  } finally {
+    globalThis.fetch = realFetch;
+    for (const [k, v] of Object.entries(savedEnv)) {
+      if (v === undefined) delete process.env[k];
+      else process.env[k] = v;
+    }
+  }
 }
 
 for (const s of servers) {

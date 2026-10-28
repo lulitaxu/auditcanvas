@@ -78,6 +78,23 @@ template and the only env file in the repo.
 | `META_MODEL_ID` | Exact model ID on the account. Verified on Night 0 wiring; not assumed in code. |
 | `META_API_BASE` | API base URL (default `https://api.meta.ai/v1`). |
 | `AUDITCANVAS_DEMO_HOSTS` | Server-side allowlist of demo hostnames that receive the full scan policy (default `localhost,127.0.0.1`). Never settable from a scan request. |
+| `BUNDLE_SIGNING_SECRET` | HMAC secret signing scan step bundles; `/finalize` and downloads verify signatures before trusting bundle contents. Set in production before deploying the signing code; unset falls back to an ephemeral per-process secret (signatures then do not survive instance restarts). |
+| `AUDITOR_PROVIDER` | Model provider for the auditor layer: `meta` (default) or `gemini`. Server env only, never client-controllable. |
+| `GEMINI_API_KEY` | Google Gemini key for the dev stand-in provider. Server-side only; required only when `AUDITOR_PROVIDER=gemini`. |
+| `GEMINI_MODEL` | Gemini model for the stand-in (default `gemini-3.8-flash`, capacity fallback `gemini-3.5-flash-lite`). |
+
+**Model providers.** Meta (Muse Spark) is the submission provider and the
+only provider the public demo runs: leave `AUDITOR_PROVIDER` unset (or
+`meta`). The Gemini adapter exists so the auditor and refutation
+prompts, output contracts, and validators can be proven against a live
+model before the Meta account verification, and as an emergency
+fallback if the Meta endpoint rejects the configured model ID at
+verification time. Flip it with `AUDITOR_PROVIDER=gemini` plus
+`GEMINI_API_KEY` in the server environment. The adapter is a pure
+transport behind the same call contract: all output validation stays
+in the existing validator layer, the three-call cap and finalize
+metering apply identically, and the report stamp names the provider
+and model that actually answered.
 
 Without the Meta variables, scans still complete: the report is the
 deterministic engine-only report and carries that status explicitly.

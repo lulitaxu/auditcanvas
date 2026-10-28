@@ -168,6 +168,12 @@ export default function ScanClient() {
   // /api/scan/diff (serverless instances share no scan state).
   const prevReportRef = useRef(null);
 
+  // The signed step-bundle chain of the last completed scan. Downloads
+  // post it alongside the report so the server can rebuild the report
+  // from the verified chain instead of trusting the client copy
+  // (security fixes H1/M4).
+  const bundleChainRef = useRef(null);
+
   // Drive one scan through its per-group steps and finalize it. The
   // steps are stateless (each runs one group in a fresh server
   // context); the client carries the per-group bundles to
@@ -190,7 +196,7 @@ export default function ScanClient() {
       });
       const step = await stepRes.json();
       if (!stepRes.ok) throw new Error(step.error || `The ${g.name} step failed.`);
-      bundles.push({ group: g.id, results: step.results, evidence: step.evidence, requests: step.requests });
+      bundles.push({ group: g.id, scanPolicy: step.scanPolicy, results: step.results, evidence: step.evidence, requests: step.requests, sig: step.sig });
       setResults((prev) => [...prev, ...step.results]);
       setGroupStatus((prev) => ({ ...prev, [g.id]: 'done' }));
     }
@@ -211,6 +217,16 @@ export default function ScanClient() {
     });
     const rep = await repRes.json();
     if (!repRes.ok) throw new Error(rep.error || 'Could not load the report.');
+    bundleChainRef.current = {
+      scan: {
+        scanId: start.scanId,
+        target: start.target,
+        attested: start.attested,
+        rescanOf: start.rescanOf,
+        createdAt: start.createdAt,
+      },
+      bundles,
+    };
     setReport(rep);
 
     // A rescan carries its lineage: diff the fresh report against the
@@ -307,7 +323,7 @@ export default function ScanClient() {
         ))}
       </ul>
       {report ? (
-        <ReportView report={report} scanId={scan.scanId} diff={diff} onRescan={rescan} busy={busy} />
+        <ReportView report={report} scanId={scan.scanId} diff={diff} onRescan={rescan} busy={busy} bundleChain={bundleChainRef.current} />
       ) : (
         <>
           <h3>Checks so far</h3>

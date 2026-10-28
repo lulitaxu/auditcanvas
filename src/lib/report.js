@@ -46,6 +46,7 @@ export function buildReport(session) {
     stamp: {
       scannerVersion: SCANNER_VERSION,
       rulesVersion: RULES_VERSION,
+      provider: config.provider || 'meta',
       modelId: config.modelId || 'none (engine-only)',
       modelConfigured: config.configured,
       timestamp: new Date().toISOString(),

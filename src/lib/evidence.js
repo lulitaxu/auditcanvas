@@ -183,14 +183,115 @@ export function makeCheck({ group, check, outcome, severity = null, title, detai
   return result;
 }
 
+// The real per-group check catalog (security fix H1 tightening,
+// 2026-10-29): a check result may only name a check the scanner can
+// actually emit. Before this, any "<group>.<check>" string passed, so
+// a client-carried bundle could invent checks wholesale. The eight
+// group IDs are frozen by SPEC.md and mirror scanner/index.js; the
+// check names mirror the makeCheck call sites in each scanner module
+// (plus 'group-error', the degraded result scanner/index.js emits
+// when a group fails). Two groups build names dynamically:
+//  - exposed derives names from its fixed path list (/.git/HEAD ->
+//    git-head, /.env -> env, /wp-admin/ -> wp-admin, ...);
+//  - stack appends the detected library and CVE id
+//    (<lib>-current, <lib>-cve-YYYY-NNNN) for the libraries in its
+//    detector table.
+export const CHECK_CATALOG = Object.freeze({
+  headers: Object.freeze({
+    exact: Object.freeze([
+      'hsts', 'hsts-missing', 'hsts-weak', 'hsts-no-subdomains',
+      'csp', 'csp-missing', 'csp-unsafe-inline', 'csp-unsafe-eval', 'csp-wildcard',
+      'csp-data-uri', 'csp-no-object-src', 'csp-no-base-uri',
+      'xcto', 'xcto-missing', 'referrer-policy', 'referrer-policy-missing',
+      'permissions-policy', 'permissions-policy-missing',
+      'framing', 'framing-invalid', 'framing-missing', 'group-error',
+    ]),
+    patterns: Object.freeze([]),
+  }),
+  tls: Object.freeze({
+    exact: Object.freeze([
+      'not-applicable', 'protocol', 'hostname', 'hostname-mismatch',
+      'chain', 'chain-invalid', 'expiry', 'cert-expired',
+      'cert-expiring-14', 'cert-expiring-30', 'group-error',
+    ]),
+    patterns: Object.freeze([]),
+  }),
+  cookies: Object.freeze({
+    exact: Object.freeze([
+      'none-set', 'secure', 'secure-missing', 'httponly', 'httponly-missing',
+      'samesite', 'samesite-missing', 'samesite-none-insecure', 'group-error',
+    ]),
+    patterns: Object.freeze([]),
+  }),
+  cors: Object.freeze({
+    exact: Object.freeze([
+      'probe', 'no-cors', 'credentialed-exposure', 'wildcard',
+      'reflection-no-creds', 'restricted', 'group-error',
+    ]),
+    patterns: Object.freeze([]),
+  }),
+  exposed: Object.freeze({
+    exact: Object.freeze(['git-head', 'env', 'wp-admin', 'server-status', 'ds-store', 'phpinfo-php', 'group-error']),
+    patterns: Object.freeze([]),
+  }),
+  stack: Object.freeze({
+    exact: Object.freeze(['none-detected', 'fetch', 'group-error']),
+    patterns: Object.freeze([
+      /^(jquery|bootstrap|lodash|angular|moment)-current$/,
+      /^(jquery|bootstrap|lodash|angular|moment)-cve-\d{4}-\d{4,}$/,
+    ]),
+  }),
+  email: Object.freeze({
+    exact: Object.freeze([
+      'spf', 'spf-missing', 'spf-multiple', 'spf-no-all', 'spf-plus-all', 'spf-neutral',
+      'dmarc', 'dmarc-missing', 'dmarc-no-policy', 'dmarc-p-none', 'group-error',
+    ]),
+    patterns: Object.freeze([]),
+  }),
+  redirects: Object.freeze({
+    exact: Object.freeze(['mixed-content', 'https-upgrade', 'https-upgrade-missing', 'open-redirect', 'group-error']),
+    patterns: Object.freeze([]),
+  }),
+});
+
+export function isCatalogCheck(group, check) {
+  const entry = CHECK_CATALOG[group];
+  if (!entry || typeof check !== 'string') return false;
+  if (entry.exact.includes(check)) return true;
+  return entry.patterns.some((re) => re.test(check));
+}
+
 export function validateCheckResult(r) {
   const errs = [];
   if (!r || typeof r !== 'object') return ['not an object'];
-  if (typeof r.checkId !== 'string' || !/^[a-z0-9-]+\.[a-z0-9-]+$/i.test(r.checkId)) errs.push('checkId must be "<group>.<check>"');
+  if (typeof r.checkId !== 'string' || !/^[a-z0-9-]+\.[a-z0-9-]+$/i.test(r.checkId)) {
+    errs.push('checkId must be "<group>.<check>"');
+  } else {
+    const dot = r.checkId.indexOf('.');
+    const group = r.checkId.slice(0, dot);
+    const check = r.checkId.slice(dot + 1);
+    if (!CHECK_CATALOG[group]) {
+      errs.push(`checkId names an unknown check group: ${group}`);
+    } else if (!isCatalogCheck(group, check)) {
+      errs.push(`checkId ${r.checkId} is not a check the ${group} group can emit`);
+    }
+    if (typeof r.group === 'string' && r.group !== group) errs.push('group does not match the checkId group');
+    // findingId is derived, never free-form: makeCheck mints exactly
+    // `f-<group>-<check>` for a finding and null for every other
+    // outcome. Enforcing the derivation here also keeps findingIds
+    // safe to use as fix-pack file names (no path separators can
+    // survive the catalog check above plus this equality).
+    if (r.outcome === 'finding') {
+      if (r.findingId !== `f-${group}-${check}`) errs.push(`findingId must be f-${group}-${check}`);
+    } else if (r.findingId !== null && r.findingId !== undefined) {
+      errs.push('only a finding may carry a findingId');
+    }
+  }
   if (!OUTCOMES.includes(r.outcome)) errs.push(`outcome must be one of ${OUTCOMES.join('/')}`);
   if (r.outcome === 'finding') {
     if (!SEVERITIES.includes(r.severity)) errs.push('finding requires a severity');
-    if (!r.findingId) errs.push('finding requires a findingId');
+  } else if (r.severity !== null && r.severity !== undefined) {
+    errs.push('only a finding may carry a severity');
   }
   if (typeof r.title !== 'string' || !r.title) errs.push('title is required');
   if (typeof r.detail !== 'string' || !r.detail) errs.push('detail is required');

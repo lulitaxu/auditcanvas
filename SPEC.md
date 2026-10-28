@@ -400,3 +400,29 @@ Dates, the $150 credit, and the banned list in this spec come from the
 official rules, FAQ, and resources posts Arz received from the organizers
 (Oct 26). The one technical unknown, model ID + structured-output support
 on his account, is a Night 0 verification, not an assumption.
+
+---
+
+## Addendum (2026-10-29, post-v2.2): Gemini dev fallback + finalize hardening
+
+Two implementation additions that do not change the locked v2.2 scope:
+
+- **Bundle signing (sweep fixes H1/H2/M4).** Step bundles are
+  HMAC-signed by the server (`BUNDLE_SIGNING_SECRET`) and verified at
+  assembly/finalize and in the download routes before any contents
+  are trusted; `/finalize` is metered per IP and finalized reports
+  are cached by the verified bundle-set digest, so the three-call
+  cap holds per bundle-set. Bare client-supplied reports posted to
+  the download routes get recomputed scores, a re-derived stamp, and
+  an explicit client-supplied-unverified integrity label — never the
+  server path's `integrity.ok`.
+- **Gemini fallback adapter.** `AUDITOR_PROVIDER=gemini` (server env
+  only) routes the auditor/refutation transports to Gemini
+  (`GEMINI_API_KEY`, `GEMINI_MODEL` default `gemini-3.8-flash`,
+  capacity fallback `gemini-3.5-flash-lite`) behind the same call
+  contract and the same validators. It exists to prove the model
+  layer against a live model before the Meta key verification and as
+  an emergency fallback at verification time. **Meta (Muse Spark)
+  remains the submission provider, and the public demo runs Meta.**
+  The report stamp records the provider and the model that actually
+  answered, whichever is active.

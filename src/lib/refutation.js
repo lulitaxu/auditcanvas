@@ -254,7 +254,9 @@ export async function runRefutation(report, chainsResult, config = auditorConfig
       pass: 'refutation',
       entries: [],
       reason:
-        'Refutation is a separate adversarial Muse Spark call and is not configured (META_API_KEY / META_MODEL_ID unset). It is reported as not run, never as passed.',
+        config.provider === 'gemini'
+          ? 'Refutation is a separate adversarial model call and is not configured (AUDITOR_PROVIDER=gemini but GEMINI_API_KEY unset). It is reported as not run, never as passed.'
+          : 'Refutation is a separate adversarial Muse Spark call and is not configured (META_API_KEY / META_MODEL_ID unset). It is reported as not run, never as passed.',
     };
   }
   const byId = new Map((report.evidence || []).map((e) => [e.id, e]));

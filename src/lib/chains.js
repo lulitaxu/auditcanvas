@@ -334,7 +334,9 @@ export function deriveChains(report, auditorOutput, config) {
     return {
       status: 'not-run',
       reason:
-        'Chain derivation is part of the Muse Spark auditor pass, which is not configured (META_API_KEY / META_MODEL_ID unset). No chains are shown; the engine never fabricates them.',
+        config.provider === 'gemini'
+          ? 'Chain derivation is part of the auditor pass, which is not configured (AUDITOR_PROVIDER=gemini but GEMINI_API_KEY unset). No chains are shown; the engine never fabricates them.'
+          : 'Chain derivation is part of the Muse Spark auditor pass, which is not configured (META_API_KEY / META_MODEL_ID unset). No chains are shown; the engine never fabricates them.',
       chains: [],
       unproven: [],
       invalid: [],
