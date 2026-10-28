@@ -1,19 +1,20 @@
 {
   "schemaVersion": 1,
-  "scanId": "hOlKQjX9x5BwwWaXsbyuafsS",
+  "scanId": "7Zh-FBQZHr4D9dWmrE9VXZgA",
   "rescanOf": null,
   "target": "https://cliphaus.dev/",
   "authorizationState": "attested",
   "scanPolicy": "restricted",
   "status": "complete",
-  "startedAt": "2026-10-28T17:24:54.981Z",
-  "updatedAt": "2026-10-28T17:25:23.938Z",
+  "startedAt": "2026-10-28T21:49:49.423Z",
+  "updatedAt": "2026-10-28T21:50:03.526Z",
   "groupStatus": {
     "headers": "done",
     "tls": "done",
     "cookies": "done",
     "cors": "done",
     "exposed": "done",
+    "exposure": "done",
     "stack": "done",
     "email": "done",
     "redirects": "done"
@@ -47,11 +48,11 @@
       "formula": "min(100, sum of severity weights over confirmed findings) with weights high=40, medium=15, low=5, info=1; any confirmed high caps the grade band at D or worse."
     },
     "coverage": {
-      "ratio": 0.95,
-      "verdicts": 18,
-      "attempted": 19,
+      "ratio": 0.96,
+      "verdicts": 24,
+      "attempted": 25,
       "inconclusive": 1,
-      "notAssessed": 2,
+      "notAssessed": 4,
       "formula": "checks that reached a verdict (Pass or Finding) / checks attempted. Inconclusive and Not assessed count as attempted but never as verdicts."
     },
     "confidence": {
@@ -62,7 +63,7 @@
       "formula": "findings backed by direct evidence / all findings. A finding is not direct when its detection rests on inference, or when the refutation pass reduced its confidence."
     },
     "counts": {
-      "pass": 15,
+      "pass": 21,
       "findings": 3,
       "confirmedFindings": 3
     }
@@ -191,7 +192,7 @@
       "group": "tls",
       "outcome": "pass",
       "severity": null,
-      "title": "Certificate valid for 85 more day(s)",
+      "title": "Certificate valid for 84 more day(s)",
       "detail": "valid_to is Jan 21 17:46:50 2027 GMT.",
       "evidenceIds": [
         "ev-0002"
@@ -231,6 +232,7 @@
       "title": "Git repository metadata not exposed (/.git/HEAD -> 404)",
       "detail": "The path returns a not-found status.",
       "evidenceIds": [
+        "ev-0004",
         "ev-0003"
       ],
       "inference": false
@@ -244,7 +246,8 @@
       "title": "Environment file not exposed (/.env -> 404)",
       "detail": "The path returns a not-found status.",
       "evidenceIds": [
-        "ev-0004"
+        "ev-0005",
+        "ev-0003"
       ],
       "inference": false
     },
@@ -257,8 +260,116 @@
       "title": "WordPress admin not exposed (/wp-admin/ -> 404)",
       "detail": "The path returns a not-found status.",
       "evidenceIds": [
-        "ev-0005"
+        "ev-0006",
+        "ev-0003"
       ],
+      "inference": false
+    },
+    {
+      "checkId": "exposure.env-local",
+      "findingId": null,
+      "group": "exposure",
+      "outcome": "pass",
+      "severity": null,
+      "title": "Environment file not exposed (/.env.local -> 404)",
+      "detail": "The path returns a not-found status.",
+      "evidenceIds": [
+        "ev-0008",
+        "ev-0007"
+      ],
+      "inference": false
+    },
+    {
+      "checkId": "exposure.env-production",
+      "findingId": null,
+      "group": "exposure",
+      "outcome": "pass",
+      "severity": null,
+      "title": "Environment file not exposed (/.env.production -> 404)",
+      "detail": "The path returns a not-found status.",
+      "evidenceIds": [
+        "ev-0009",
+        "ev-0007"
+      ],
+      "inference": false
+    },
+    {
+      "checkId": "exposure.env-bak",
+      "findingId": null,
+      "group": "exposure",
+      "outcome": "pass",
+      "severity": null,
+      "title": "Environment file not exposed (/.env.bak -> 404)",
+      "detail": "The path returns a not-found status.",
+      "evidenceIds": [
+        "ev-0010",
+        "ev-0007"
+      ],
+      "inference": false
+    },
+    {
+      "checkId": "exposure.git-config",
+      "findingId": null,
+      "group": "exposure",
+      "outcome": "pass",
+      "severity": null,
+      "title": "Git configuration not exposed (/.git/config -> 404)",
+      "detail": "The path returns a not-found status.",
+      "evidenceIds": [
+        "ev-0011",
+        "ev-0007"
+      ],
+      "inference": false
+    },
+    {
+      "checkId": "exposure.js-secrets",
+      "findingId": null,
+      "group": "exposure",
+      "outcome": "pass",
+      "severity": null,
+      "title": "No known secret patterns in first-party JavaScript",
+      "detail": "No known secret patterns in 4 scanned first-party assets (507593 bytes). Patterns are anchored formats (AWS, Stripe, GitHub, Supabase service-role, Slack, private-key blocks); this does not prove the absence of every possible credential.",
+      "evidenceIds": [
+        "ev-0012",
+        "ev-0013",
+        "ev-0014",
+        "ev-0015"
+      ],
+      "inference": false
+    },
+    {
+      "checkId": "exposure.verbose-errors",
+      "findingId": null,
+      "group": "exposure",
+      "outcome": "pass",
+      "severity": null,
+      "title": "Error responses do not disclose internals",
+      "detail": "Error responses do not disclose stack traces or internal paths (judged on the response to a nonexistent path).",
+      "evidenceIds": [
+        "ev-0007"
+      ],
+      "inference": false
+    },
+    {
+      "checkId": "exposure.admin-route",
+      "findingId": null,
+      "group": "exposure",
+      "outcome": "not-assessed",
+      "severity": null,
+      "title": "Admin surface not assessed under the restricted scan policy (/admin)",
+      "detail": "[reason:policy-restricted] Judging this surface requires interaction the restricted (unverified-target) policy does not perform; the conventional path was not requested.",
+      "evidenceIds": [],
+      "inference": false
+    },
+    {
+      "checkId": "exposure.debug-route",
+      "findingId": null,
+      "group": "exposure",
+      "outcome": "not-assessed",
+      "severity": null,
+      "title": "Debug surface not assessed under the restricted scan policy (/debug)",
+      "detail": "[reason:policy-restricted] Judging this surface requires interaction the restricted (unverified-target) policy does not perform; the conventional path was not requested.",
+      "evidenceIds": [],
       "inference": false
     },
     {
@@ -271,7 +382,7 @@
       "detail": "Scanned 6 script asset(s) from the landing page; none matched a library in snapshot nvd-2026-10-28. Libraries loaded from third-party CDNs are detected by the same rules when reachable.",
       "evidenceIds": [
         "ev-0001",
-        "ev-0006"
+        "ev-0016"
       ],
       "inference": false
     },
@@ -284,7 +395,7 @@
       "title": "SPF record missing",
       "detail": "TXT records exist but none is an SPF policy (v=spf1), so receivers cannot tell legitimate senders from spoofers.",
       "evidenceIds": [
-        "ev-0007"
+        "ev-0017"
       ],
       "inference": false
     },
@@ -297,7 +408,7 @@
       "title": "DMARC could not be verified (DNS nxdomain)",
       "detail": "The DNS query for _dmarc.cliphaus.dev returned nxdomain. Per the error taxonomy this is inconclusive, not \"missing\": the record may exist and simply be unresolvable right now.",
       "evidenceIds": [
-        "ev-0008"
+        "ev-0018"
       ],
       "inference": false
     },
@@ -323,7 +434,7 @@
       "title": "HTTP origin serves content instead of redirecting to HTTPS",
       "detail": "The same host answers on port 80 with content, so visitors can be kept on the unencrypted origin.",
       "evidenceIds": [
-        "ev-0009"
+        "ev-0019"
       ],
       "inference": false
     },
@@ -344,7 +455,7 @@
       "id": "ev-0001",
       "kind": "http-response",
       "target": "https://cliphaus.dev/",
-      "at": "2026-10-28T17:24:57.976Z",
+      "at": "2026-10-28T21:49:51.802Z",
       "data": {
         "status": 200,
         "finalUrl": "https://cliphaus.dev/",
@@ -387,13 +498,13 @@
       "id": "ev-0002",
       "kind": "tls",
       "target": "https://cliphaus.dev/",
-      "at": "2026-10-28T17:24:59.459Z",
+      "at": "2026-10-28T21:49:52.472Z",
       "data": {
         "protocol": "TLSv1.3",
         "authorized": true,
         "authorizationError": null,
         "hostnameMatch": true,
-        "remoteAddress": "172.67.208.170",
+        "remoteAddress": "104.21.93.103",
         "cert": {
           "subject": {
             "CN": "cliphaus.dev"
@@ -414,8 +525,50 @@
     {
       "id": "ev-0003",
       "kind": "http-response",
+      "target": "https://cliphaus.dev/ac-nonexistent-k623ea8wv2",
+      "at": "2026-10-28T21:49:55.733Z",
+      "data": {
+        "status": 404,
+        "finalUrl": "https://cliphaus.dev/ac-nonexistent-k623ea8wv2",
+        "redirectCount": 0,
+        "headers": {
+          "content-type": "text/html; charset=utf-8",
+          "strict-transport-security": "max-age=31536000; includeSubDomains",
+          "content-security-policy": "default-src 'self'; script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' blob: https://*.supabase.co https://*.backblazeb2.com; connect-src 'self' https://*.supabase.co https://*.backblazeb2.com https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'",
+          "permissions-policy": "camera=(), microphone=(), geolocation=(), payment=()",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "x-content-type-options": "nosniff",
+          "server": "cloudflare"
+        },
+        "headerNames": [
+          "alt-svc",
+          "cache-control",
+          "cf-ray",
+          "connection",
+          "content-security-policy",
+          "content-type",
+          "date",
+          "nel",
+          "permissions-policy",
+          "referrer-policy",
+          "report-to",
+          "server",
+          "strict-transport-security",
+          "transfer-encoding",
+          "vary",
+          "x-content-type-options",
+          "x-dns-prefetch-control"
+        ],
+        "setCookies": [],
+        "bodyBytes": 12909,
+        "truncated": false
+      }
+    },
+    {
+      "id": "ev-0004",
+      "kind": "http-response",
       "target": "https://cliphaus.dev/.git/HEAD",
-      "at": "2026-10-28T17:25:12.623Z",
+      "at": "2026-10-28T21:49:56.001Z",
       "data": {
         "status": 404,
         "finalUrl": "https://cliphaus.dev/.git/HEAD",
@@ -454,10 +607,10 @@
       }
     },
     {
-      "id": "ev-0004",
+      "id": "ev-0005",
       "kind": "http-response",
       "target": "https://cliphaus.dev/.env",
-      "at": "2026-10-28T17:25:13.477Z",
+      "at": "2026-10-28T21:49:56.156Z",
       "data": {
         "status": 404,
         "finalUrl": "https://cliphaus.dev/.env",
@@ -496,10 +649,10 @@
       }
     },
     {
-      "id": "ev-0005",
+      "id": "ev-0006",
       "kind": "http-response",
       "target": "https://cliphaus.dev/wp-admin/",
-      "at": "2026-10-28T17:25:13.767Z",
+      "at": "2026-10-28T21:49:56.498Z",
       "data": {
         "status": 404,
         "finalUrl": "https://cliphaus.dev/wp-admin",
@@ -538,10 +691,272 @@
       }
     },
     {
-      "id": "ev-0006",
+      "id": "ev-0007",
+      "kind": "http-response",
+      "target": "https://cliphaus.dev/ac-nonexistent-9at62ehv7m",
+      "at": "2026-10-28T21:49:57.165Z",
+      "data": {
+        "status": 404,
+        "finalUrl": "https://cliphaus.dev/ac-nonexistent-9at62ehv7m",
+        "redirectCount": 0,
+        "headers": {
+          "content-type": "text/html; charset=utf-8",
+          "strict-transport-security": "max-age=31536000; includeSubDomains",
+          "content-security-policy": "default-src 'self'; script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' blob: https://*.supabase.co https://*.backblazeb2.com; connect-src 'self' https://*.supabase.co https://*.backblazeb2.com https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'",
+          "permissions-policy": "camera=(), microphone=(), geolocation=(), payment=()",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "x-content-type-options": "nosniff",
+          "server": "cloudflare"
+        },
+        "headerNames": [
+          "alt-svc",
+          "cache-control",
+          "cf-ray",
+          "connection",
+          "content-security-policy",
+          "content-type",
+          "date",
+          "nel",
+          "permissions-policy",
+          "referrer-policy",
+          "report-to",
+          "server",
+          "strict-transport-security",
+          "transfer-encoding",
+          "vary",
+          "x-content-type-options",
+          "x-dns-prefetch-control"
+        ],
+        "setCookies": [],
+        "bodyBytes": 12909,
+        "truncated": false
+      }
+    },
+    {
+      "id": "ev-0008",
+      "kind": "http-response",
+      "target": "https://cliphaus.dev/.env.local",
+      "at": "2026-10-28T21:49:57.420Z",
+      "data": {
+        "status": 404,
+        "finalUrl": "https://cliphaus.dev/.env.local",
+        "redirectCount": 0,
+        "headers": {
+          "content-type": "text/html; charset=utf-8",
+          "strict-transport-security": "max-age=31536000; includeSubDomains",
+          "content-security-policy": "default-src 'self'; script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' blob: https://*.supabase.co https://*.backblazeb2.com; connect-src 'self' https://*.supabase.co https://*.backblazeb2.com https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'",
+          "permissions-policy": "camera=(), microphone=(), geolocation=(), payment=()",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "x-content-type-options": "nosniff",
+          "server": "cloudflare"
+        },
+        "headerNames": [
+          "alt-svc",
+          "cache-control",
+          "cf-ray",
+          "connection",
+          "content-security-policy",
+          "content-type",
+          "date",
+          "nel",
+          "permissions-policy",
+          "referrer-policy",
+          "report-to",
+          "server",
+          "strict-transport-security",
+          "transfer-encoding",
+          "vary",
+          "x-content-type-options",
+          "x-dns-prefetch-control"
+        ],
+        "setCookies": [],
+        "bodyBytes": 12894,
+        "truncated": false
+      }
+    },
+    {
+      "id": "ev-0009",
+      "kind": "http-response",
+      "target": "https://cliphaus.dev/.env.production",
+      "at": "2026-10-28T21:49:57.561Z",
+      "data": {
+        "status": 404,
+        "finalUrl": "https://cliphaus.dev/.env.production",
+        "redirectCount": 0,
+        "headers": {
+          "content-type": "text/html; charset=utf-8",
+          "strict-transport-security": "max-age=31536000; includeSubDomains",
+          "content-security-policy": "default-src 'self'; script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' blob: https://*.supabase.co https://*.backblazeb2.com; connect-src 'self' https://*.supabase.co https://*.backblazeb2.com https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'",
+          "permissions-policy": "camera=(), microphone=(), geolocation=(), payment=()",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "x-content-type-options": "nosniff",
+          "server": "cloudflare"
+        },
+        "headerNames": [
+          "alt-svc",
+          "cache-control",
+          "cf-ray",
+          "connection",
+          "content-security-policy",
+          "content-type",
+          "date",
+          "nel",
+          "permissions-policy",
+          "referrer-policy",
+          "report-to",
+          "server",
+          "strict-transport-security",
+          "transfer-encoding",
+          "vary",
+          "x-content-type-options",
+          "x-dns-prefetch-control"
+        ],
+        "setCookies": [],
+        "bodyBytes": 12899,
+        "truncated": false
+      }
+    },
+    {
+      "id": "ev-0010",
+      "kind": "http-response",
+      "target": "https://cliphaus.dev/.env.bak",
+      "at": "2026-10-28T21:49:57.847Z",
+      "data": {
+        "status": 404,
+        "finalUrl": "https://cliphaus.dev/.env.bak",
+        "redirectCount": 0,
+        "headers": {
+          "content-type": "text/html; charset=utf-8",
+          "strict-transport-security": "max-age=31536000; includeSubDomains",
+          "content-security-policy": "default-src 'self'; script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' blob: https://*.supabase.co https://*.backblazeb2.com; connect-src 'self' https://*.supabase.co https://*.backblazeb2.com https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'",
+          "permissions-policy": "camera=(), microphone=(), geolocation=(), payment=()",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "x-content-type-options": "nosniff",
+          "server": "cloudflare"
+        },
+        "headerNames": [
+          "alt-svc",
+          "cache-control",
+          "cf-ray",
+          "connection",
+          "content-security-policy",
+          "content-type",
+          "date",
+          "nel",
+          "permissions-policy",
+          "referrer-policy",
+          "report-to",
+          "server",
+          "strict-transport-security",
+          "transfer-encoding",
+          "vary",
+          "x-content-type-options",
+          "x-dns-prefetch-control"
+        ],
+        "setCookies": [],
+        "bodyBytes": 12892,
+        "truncated": false
+      }
+    },
+    {
+      "id": "ev-0011",
+      "kind": "http-response",
+      "target": "https://cliphaus.dev/.git/config",
+      "at": "2026-10-28T21:49:58.006Z",
+      "data": {
+        "status": 404,
+        "finalUrl": "https://cliphaus.dev/.git/config",
+        "redirectCount": 0,
+        "headers": {
+          "content-type": "text/html; charset=utf-8",
+          "strict-transport-security": "max-age=31536000; includeSubDomains",
+          "content-security-policy": "default-src 'self'; script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' blob: https://*.supabase.co https://*.backblazeb2.com; connect-src 'self' https://*.supabase.co https://*.backblazeb2.com https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'",
+          "permissions-policy": "camera=(), microphone=(), geolocation=(), payment=()",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "x-content-type-options": "nosniff",
+          "server": "cloudflare"
+        },
+        "headerNames": [
+          "alt-svc",
+          "cache-control",
+          "cf-ray",
+          "connection",
+          "content-security-policy",
+          "content-type",
+          "date",
+          "nel",
+          "permissions-policy",
+          "referrer-policy",
+          "report-to",
+          "server",
+          "strict-transport-security",
+          "transfer-encoding",
+          "vary",
+          "x-content-type-options",
+          "x-dns-prefetch-control"
+        ],
+        "setCookies": [],
+        "bodyBytes": 12899,
+        "truncated": false
+      }
+    },
+    {
+      "id": "ev-0012",
+      "kind": "content-scan",
+      "target": "https://cliphaus.dev/",
+      "at": "2026-10-28T21:49:59.061Z",
+      "data": {
+        "asset": "(inline root document)",
+        "inline": true,
+        "bytesFetched": 76626,
+        "bytesTotal": 76687,
+        "truncated": false
+      }
+    },
+    {
+      "id": "ev-0013",
+      "kind": "content-scan",
+      "target": "https://cliphaus.dev/_next/static/chunks/37z413kjv7sf0.js",
+      "at": "2026-10-28T21:49:59.062Z",
+      "data": {
+        "asset": "https://cliphaus.dev/_next/static/chunks/37z413kjv7sf0.js",
+        "inline": false,
+        "bytesFetched": 32707,
+        "bytesTotal": 32707,
+        "truncated": false
+      }
+    },
+    {
+      "id": "ev-0014",
+      "kind": "content-scan",
+      "target": "https://cliphaus.dev/_next/static/chunks/0m7a9yen5gu1g.js",
+      "at": "2026-10-28T21:49:59.062Z",
+      "data": {
+        "asset": "https://cliphaus.dev/_next/static/chunks/0m7a9yen5gu1g.js",
+        "inline": false,
+        "bytesFetched": 233873,
+        "bytesTotal": 233875,
+        "truncated": false
+      }
+    },
+    {
+      "id": "ev-0015",
+      "kind": "content-scan",
+      "target": "https://cliphaus.dev/_next/static/chunks/1hb838xsm_ecd.js",
+      "at": "2026-10-28T21:49:59.062Z",
+      "data": {
+        "asset": "https://cliphaus.dev/_next/static/chunks/1hb838xsm_ecd.js",
+        "inline": false,
+        "bytesFetched": 164387,
+        "bytesTotal": 164387,
+        "truncated": false
+      }
+    },
+    {
+      "id": "ev-0016",
       "kind": "cve-snapshot",
       "target": "https://cliphaus.dev/",
-      "at": "2026-10-28T17:25:14.939Z",
+      "at": "2026-10-28T21:49:59.234Z",
       "data": {
         "snapshotVersion": "nvd-2026-10-28",
         "source": "NVD API 2.0 (services.nvd.nist.gov), verified pull 2026-10-28",
@@ -549,10 +964,10 @@
       }
     },
     {
-      "id": "ev-0007",
+      "id": "ev-0017",
       "kind": "dns",
       "target": "cliphaus.dev",
-      "at": "2026-10-28T17:25:18.821Z",
+      "at": "2026-10-28T21:50:00.970Z",
       "data": {
         "query": "cliphaus.dev TXT",
         "status": "ok",
@@ -562,10 +977,10 @@
       }
     },
     {
-      "id": "ev-0008",
+      "id": "ev-0018",
       "kind": "dns",
       "target": "_dmarc.cliphaus.dev",
-      "at": "2026-10-28T17:25:18.836Z",
+      "at": "2026-10-28T21:50:00.977Z",
       "data": {
         "query": "_dmarc.cliphaus.dev TXT",
         "status": "nxdomain",
@@ -573,10 +988,10 @@
       }
     },
     {
-      "id": "ev-0009",
+      "id": "ev-0019",
       "kind": "http-response",
       "target": "http://cliphaus.dev/",
-      "at": "2026-10-28T17:25:22.784Z",
+      "at": "2026-10-28T21:50:03.229Z",
       "data": {
         "status": 200,
         "finalUrl": "http://cliphaus.dev/",
@@ -639,7 +1054,7 @@
       "title": "SPF record missing",
       "detail": "TXT records exist but none is an SPF policy (v=spf1), so receivers cannot tell legitimate senders from spoofers.",
       "evidenceIds": [
-        "ev-0007"
+        "ev-0017"
       ],
       "inference": false
     },
@@ -652,7 +1067,7 @@
       "title": "HTTP origin serves content instead of redirecting to HTTPS",
       "detail": "The same host answers on port 80 with content, so visitors can be kept on the unencrypted origin.",
       "evidenceIds": [
-        "ev-0009"
+        "ev-0019"
       ],
       "inference": false
     }
@@ -683,10 +1098,11 @@
   },
   "stamp": {
     "scannerVersion": "0.1.0",
-    "rulesVersion": "1.0.0",
+    "rulesVersion": "1.1.0",
+    "provider": "meta",
     "modelId": "none (engine-only)",
     "modelConfigured": false,
-    "timestamp": "2026-10-28T17:25:23.938Z",
+    "timestamp": "2026-10-28T21:50:03.526Z",
     "target": "https://cliphaus.dev/",
     "scanPolicy": "restricted",
     "dataSnapshots": {
@@ -700,23 +1116,23 @@
   },
   "auditLog": [
     {
-      "at": "2026-10-28T17:24:54.981Z",
+      "at": "2026-10-28T21:49:49.423Z",
       "event": "scan-created",
       "target": "https://cliphaus.dev/",
       "authorizationState": "attested",
       "verification": null,
       "scanPolicy": "restricted",
-      "ip": "87.81.235.44",
+      "ip": "87.81.226.90",
       "flow": "stateless"
     },
     {
-      "at": "2026-10-28T17:25:23.938Z",
+      "at": "2026-10-28T21:50:03.526Z",
       "event": "scan-complete",
       "target": "https://cliphaus.dev/",
       "flow": "stateless"
     },
     {
-      "at": "2026-10-28T17:25:23.939Z",
+      "at": "2026-10-28T21:50:03.526Z",
       "event": "report-finalized",
       "auditorStatus": "engine-only",
       "chainsRendered": 0,
@@ -739,6 +1155,7 @@
   },
   "auditor": {
     "status": "engine-only",
+    "provider": "meta",
     "modelId": null,
     "reason": "META_API_KEY / META_MODEL_ID are not set; this is the deterministic engine-only report. Auditor reasoning, chains, and refutation are shown as not run, never simulated.",
     "calls": [],
