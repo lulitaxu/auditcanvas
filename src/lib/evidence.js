@@ -207,7 +207,7 @@ export const CHECK_CATALOG = Object.freeze({
       'csp-data-uri', 'csp-no-object-src', 'csp-no-base-uri',
       'xcto', 'xcto-missing', 'referrer-policy', 'referrer-policy-missing',
       'permissions-policy', 'permissions-policy-missing',
-      'framing', 'framing-invalid', 'framing-missing', 'group-error',
+      'framing', 'framing-invalid', 'framing-missing', 'fetch', 'group-error',
     ]),
     patterns: Object.freeze([]),
   }),
@@ -222,7 +222,7 @@ export const CHECK_CATALOG = Object.freeze({
   cookies: Object.freeze({
     exact: Object.freeze([
       'none-set', 'secure', 'secure-missing', 'httponly', 'httponly-missing',
-      'samesite', 'samesite-missing', 'samesite-none-insecure', 'group-error',
+      'samesite', 'samesite-missing', 'samesite-none-insecure', 'fetch', 'group-error',
     ]),
     patterns: Object.freeze([]),
   }),

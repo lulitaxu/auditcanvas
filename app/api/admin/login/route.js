@@ -51,7 +51,7 @@ export async function POST(request) {
     if (outcome.setCookie) headers['Set-Cookie'] = outcome.setCookie;
     return adminJson(outcome.json, outcome.status, headers);
   } catch (err) {
-    if (err && err.code === 'store_unavailable') {
+    if (err && (err.code === 'store_unavailable' || err.code === 'store_error')) {
       return adminJson({ error: 'Admin storage unavailable.' }, 503);
     }
     throw err;

@@ -15,7 +15,7 @@ export async function POST(request) {
     const outcome = await logoutSession(request, { db: auth.db, cfg: auth.cfg, session: auth.session });
     return adminJson(outcome.json, outcome.status, { 'Set-Cookie': outcome.setCookie });
   } catch (err) {
-    if (err && err.code === 'store_unavailable') {
+    if (err && (err.code === 'store_unavailable' || err.code === 'store_error')) {
       return adminJson({ error: 'Admin storage unavailable.' }, 503);
     }
     throw err;

@@ -11,7 +11,7 @@
 //      same-origin check (failure -> generic 403 + a csrf_rejected
 //      audit event; the response never says which part failed).
 import { adminConfig } from './config.js';
-import { getAdminDb, AdminStoreUnavailable } from './db.js';
+import { getAdminDb, AdminStoreUnavailable, AdminStoreError } from './db.js';
 import { adminJson, adminSourceHash, checkSameOrigin, clientIp } from './http.js';
 import { validateSessionRequest, deriveCsrfToken, validateCsrfToken } from './session.js';
 import { insertAdminEvent } from './events.js';
@@ -32,7 +32,7 @@ export async function requireAdminApi(request, { csrf = true, routeClass = 'admi
   try {
     session = await validateSessionRequest(db, request, { now });
   } catch (err) {
-    if (err instanceof AdminStoreUnavailable || (err && err.code === 'store_unavailable')) {
+    if (err instanceof AdminStoreUnavailable || err instanceof AdminStoreError || (err && (err.code === 'store_unavailable' || err.code === 'store_error'))) {
       return { ok: false, response: adminJson({ error: 'Admin storage unavailable.' }, 503) };
     }
     throw err;

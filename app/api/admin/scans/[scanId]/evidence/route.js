@@ -23,7 +23,7 @@ export async function GET(request, { params }) {
   try {
     run = await getAdminRun(auth.db, scanId);
   } catch (err) {
-    if (err && err.code === 'store_unavailable') {
+    if (err && (err.code === 'store_unavailable' || err.code === 'store_error')) {
       return adminJson({ error: 'Admin storage unavailable.' }, 503);
     }
     throw err;

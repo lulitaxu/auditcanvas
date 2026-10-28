@@ -18,11 +18,11 @@ import {
   AssemblyError,
 } from '../scanstore.js';
 import { GROUPS, groupById, runGroup } from '../scanner/index.js';
-import { signStepBundle, bundleSetDigest, canonicalStringify } from '../bundlesig.js';
+import { signStepBundle, verifyStepBundle, bundleSetDigest, canonicalStringify } from '../bundlesig.js';
 import { finalizeReportForBundleSet } from '../pipeline.js';
 import { insertAdminEventStmt } from './events.js';
 import { adminSourceHash, clientIp, readJsonBody, BodyError } from './http.js';
-import { toIso, toNum, AdminStoreUnavailable } from './db.js';
+import { toIso, toNum, AdminStoreUnavailable, AdminStoreError } from './db.js';
 
 export const GRANT_TTL_MS = 30 * 60 * 1000;
 export const MAX_ACTIVE_GRANTS_PER_SESSION = 3;
@@ -144,7 +144,14 @@ function storeUnavailable() {
 }
 
 function isStoreError(err) {
-  return err instanceof AdminStoreUnavailable || (err && err.code === 'store_unavailable');
+  // Both typed store errors fail closed as a generic 503 on admin
+  // paths: the operator cannot act on the distinction, and an
+  // unhandled throw would surface as a 500 that leaks 'crashed'.
+  return (
+    err instanceof AdminStoreUnavailable ||
+    err instanceof AdminStoreError ||
+    (err && (err.code === 'store_unavailable' || err.code === 'store_error'))
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -408,7 +415,12 @@ export async function finalizeAdminScan(request, { db, cfg, session, now = Date.
     if (!bundles) return { status: 400, json: { error: 'Step bundles are required.' } };
     const digest = bundleSetDigest({ scanId: grant.scanId, target: grant.target, bundles });
     if (grant.bundleSetDigest && digest === grant.bundleSetDigest && grant.report) {
-      return { status: 200, json: grant.report };
+      // The digest covers (group, sig) pairs; a presented bundle
+      // whose contents no longer match its signature is not the
+      // signed set that was finalized — it is a conflict, not a
+      // replay.
+      const genuine = bundles.every((b) => verifyStepBundle(b, { scanId: grant.scanId, target: grant.target }));
+      if (genuine) return { status: 200, json: grant.report };
     }
     return { status: 409, json: { error: 'Admin scan was finalized from a different bundle set.' } };
   }
