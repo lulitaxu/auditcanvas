@@ -184,8 +184,8 @@ export default async function AdminConsolePage() {
             {events.map((ev) => (
               <li key={ev.id}>
                 <div className="result-head">
-                  <span className="chip">{EVENT_CLASS[ev.type] || 'EVENT'}</span>
-                  <span className="result-title">{EVENT_NAME[ev.type] || ev.type}</span>
+                  <span className="chip">{EVENT_CLASS[ev.eventType] || 'EVENT'}</span>
+                  <span className="result-title">{EVENT_NAME[ev.eventType] || ev.eventType}</span>
                 </div>
                 <div className="result-detail">
                   <code>{fmtTime(ev.occurredAt)}</code>
