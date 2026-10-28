@@ -271,8 +271,21 @@ theft (HttpOnly governs script access; Secure governs transport).
   scoped to npm server users, not browser-loaded Moment.js. The snapshot
   version travels in every report's reproducibility stamp with a stale
   warning after 90 days.
-- Scan sessions are in-memory; report persistence, 7-day expiry, and
-  one-click delete land with the report-lifecycle work.
+- Scan sessions are STATELESS (production fix, 2026-10-28): the first
+  deployed build kept sessions in one process's memory, so on Vercel
+  every step after /start failed with "Unknown scan ID" and reports
+  finalized empty. The flow is now descriptor → per-group steps (each
+  re-derives the policy server-side and returns its results +
+  evidence) → /api/scan/finalize, which re-validates, re-redacts,
+  dedupes and renumbers everything server-side before the pipeline
+  runs; finalized reports are held by the client and posted back for
+  downloads/diffs. The seeded demo target now resolves to the full
+  policy by a server-side self-origin rule (the exact /api/demo-target
+  path on the app's own origin), instead of needing its production
+  hostname in a config allowlist. Still open: durable report
+  persistence, 7-day expiry, and one-click delete land with the
+  report-lifecycle work; per-IP cooldown/quota counters and the DNS
+  verification store remain per-process best-effort on serverless.
 - The summary pass (call 3 of 3) remains a call-site stub: the fix pack
   is generated deterministically so it exists in every report; only the
   prose summary waits on the live auditor.

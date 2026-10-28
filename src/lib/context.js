@@ -36,16 +36,44 @@ export function demoHosts() {
     .filter(Boolean);
 }
 
-// authorizationState: 'verified' (allowlisted demo host, or a hostname
-// with a completed DNS TXT verification — the token is bound to the
-// exact hostname, ownership.js) or 'attested' / 'unattested' for user
-// targets, which always run restricted until verified. Note allowPrivate
-// stays false for DNS-verified hosts: verification unlocks the check
-// set, never the SSRF address rules.
-export function policyForTarget(url, { attested = false, verified = false } = {}) {
+// The seeded demo target (SPEC.md: Judge mode) is THIS app's own
+// /api/demo-target route. When a scan target is that exact path on the
+// app's own origin — the origin the current request was served from,
+// passed in by the route, never by the client — it is allowlisted for
+// the full check set, for that exact host only. This is what makes the
+// deployed Judge-mode demo run the full policy: the production origin
+// is not (and must not need to be) in AUDITCANVAS_DEMO_HOSTS.
+export const DEMO_TARGET_PATH = '/api/demo-target';
+
+export function isSelfDemoTarget(url, selfOrigin) {
+  if (!selfOrigin) return false;
+  let origin;
+  try {
+    origin = new URL(selfOrigin).origin;
+  } catch {
+    return false;
+  }
+  if (url.origin !== origin) return false;
+  return url.pathname === DEMO_TARGET_PATH || url.pathname.startsWith(`${DEMO_TARGET_PATH}/`);
+}
+
+// authorizationState: 'verified' (allowlisted demo host, the app's own
+// seeded demo target, or a hostname with a completed DNS TXT
+// verification — the token is bound to the exact hostname,
+// ownership.js) or 'attested' / 'unattested' for user targets, which
+// always run restricted until verified. Note allowPrivate stays false
+// for DNS-verified hosts: verification unlocks the check set, never
+// the SSRF address rules. allowPrivate for the self-demo follows the
+// demo-host config only: the production demo origin is a public host
+// whose addresses pass the normal SSRF validation, so it never needs
+// the loopback allowance.
+export function policyForTarget(url, { attested = false, verified = false, selfOrigin = null } = {}) {
   const host = url.hostname.toLowerCase();
   if (demoHosts().includes(host)) {
     return { policy: POLICIES.full, authorizationState: 'verified', allowPrivate: true };
+  }
+  if (isSelfDemoTarget(url, selfOrigin)) {
+    return { policy: POLICIES.full, authorizationState: 'verified', allowPrivate: false };
   }
   if (verified) {
     return { policy: POLICIES.full, authorizationState: 'verified', allowPrivate: false };

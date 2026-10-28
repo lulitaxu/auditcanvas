@@ -56,7 +56,8 @@ const { applyRefutation, refutationScope } = await import('../src/lib/refutation
 const { buildEvidenceBundle, buildFixPack, EVIDENCE_FILENAME, FIX_PACK_FILENAME } = await import('../src/lib/downloads.js');
 const { listZipEntries, readZipEntry } = await import('../src/lib/zip.js');
 const ownership = await import('../src/lib/ownership.js');
-const { createScan } = await import('../src/lib/scanstore.js');
+const { createScan, startScanDescriptor, assembleSession, AssemblyError } = await import('../src/lib/scanstore.js');
+const { finalizeReport } = await import('../src/lib/pipeline.js');
 const { diffReports } = await import('../src/lib/diff.js');
 const fixtures = await import('../fixtures/server.mjs');
 
@@ -403,6 +404,107 @@ const corsProposal = (extraNodes = []) => ({
     sevDiff.counts.severityChanged === 1 && sevDiff.counts.persistent === 0
       && sevDiff.severityChanged[0].severityBefore === 'medium' && sevDiff.severityChanged[0].severityAfter === 'high',
     JSON.stringify(sevDiff.counts));
+}
+
+// --- Production fix: stateless scan flow + self-demo policy ---
+// Regression coverage for the 2026-10-28 serverless failure: scan
+// sessions lived only in one process's memory, so every /step after
+// /start failed on Vercel; and the deployed demo target got the
+// restricted policy because its origin is not a configured demo host.
+{
+  const { GROUPS: ALL_GROUPS } = await import('../src/lib/scanner/index.js');
+
+  // SELF-DEMO POLICY — full only for the exact demo path on our own origin.
+  const demoUrl = new URL('https://auditcanvas.vercel.app/api/demo-target');
+  check('policy: seeded demo on the app origin runs the FULL policy',
+    policyForTarget(demoUrl, { selfOrigin: 'https://auditcanvas.vercel.app' }).policy.name === 'full'
+    && policyForTarget(demoUrl, { selfOrigin: 'https://auditcanvas.vercel.app' }).authorizationState === 'verified');
+  check('policy: self-demo never grants the loopback allowance',
+    policyForTarget(demoUrl, { selfOrigin: 'https://auditcanvas.vercel.app' }).allowPrivate === false);
+  check('policy: the demo path on a FOREIGN origin stays restricted',
+    policyForTarget(new URL('https://evil.example/api/demo-target'), { selfOrigin: 'https://auditcanvas.vercel.app' }).policy.name === 'restricted');
+  check('policy: a non-demo path on the app origin stays restricted',
+    policyForTarget(new URL('https://auditcanvas.vercel.app/account'), { selfOrigin: 'https://auditcanvas.vercel.app' }).policy.name === 'restricted');
+  check('policy: without a self origin the demo URL stays restricted',
+    policyForTarget(demoUrl, {}).policy.name === 'restricted');
+  const demoDescriptor = startScanDescriptor({ url: demoUrl.toString(), attested: true, ip: 'verify-stateless', selfOrigin: 'https://auditcanvas.vercel.app' });
+  check('descriptor: start issues the full-policy descriptor for the seeded demo',
+    demoDescriptor.scanPolicy === 'full' && demoDescriptor.groups.length === 8 && typeof demoDescriptor.scanId === 'string');
+
+  // STATELESS ASSEMBLY — per-group steps in fresh contexts, assembled
+  // server-side, must reproduce the monolithic scan's findings.
+  async function stepBundles(baseUrl, dnsTxt = dnsMissing) {
+    const bundles = [];
+    for (const g of ALL_GROUPS) {
+      const ctx = createScanContext({
+        baseUrl,
+        policy: { ...POLICIES.full },
+        authorizationState: 'verified',
+        allowPrivate: true,
+        dnsTxtFn: dnsTxt,
+      });
+      const rs = await runGroup(ctx, g.id);
+      bundles.push({ group: g.id, results: rs, evidence: ctx.evidence.items, requests: ctx.requests });
+    }
+    return bundles;
+  }
+
+  const bundles = await stepBundles('http://127.0.0.1/');
+  const rawEvidenceCount = bundles.reduce((n, b) => n + b.evidence.length, 0);
+  const session = assembleSession({
+    scanId: 'stateless-verify-0001', target: 'http://127.0.0.1/', attested: true,
+    bundles, ip: 'verify-stateless',
+  });
+  check('stateless: assembly derives the policy server-side (demo host -> full)',
+    session.policyName === 'full' && session.status === 'complete');
+  check('stateless: identical evidence across groups is deduped at assembly',
+    session.ctx.evidence.items.length < rawEvidenceCount,
+    `${session.ctx.evidence.items.length} merged vs ${rawEvidenceCount} raw`);
+  check('stateless: every assembled evidence reference resolves',
+    unresolvedEvidenceIds(session.results, session.ctx.evidence.items).length === 0);
+  const statelessReport = await finalizeReport(session);
+  const mono = await scan('http://127.0.0.1/');
+  const statelessFindings = findingsOf(statelessReport.results).map((f) => f.checkId).sort();
+  const monoFindings = findingsOf(mono.results).map((f) => f.checkId).sort();
+  check('stateless: assembled findings match the monolithic scan',
+    JSON.stringify(statelessFindings) === JSON.stringify(monoFindings),
+    JSON.stringify({ statelessFindings, monoFindings }));
+  check('stateless: finalized report has real risk and ok integrity',
+    statelessReport.scores.risk.score > 0 && statelessReport.integrity.ok === true,
+    JSON.stringify(statelessReport.scores.risk));
+
+  // ASSEMBLY REFUSES TAMPERED BUNDLES.
+  const clone = (v) => JSON.parse(JSON.stringify(v));
+  const expectReject = (name, mutate) => {
+    const bad = clone(bundles);
+    mutate(bad);
+    let rejected = false;
+    try {
+      assembleSession({ scanId: 'stateless-verify-0002', target: 'http://127.0.0.1/', bundles: bad, ip: 'verify-stateless' });
+    } catch (err) {
+      rejected = err instanceof AssemblyError;
+    }
+    check(name, rejected);
+  };
+  expectReject('stateless: a result citing unknown evidence is rejected', (bad) => {
+    bad[0].results[0].evidenceIds = ['ev-9999'];
+  });
+  expectReject('stateless: a malformed result (finding without severity) is rejected', (bad) => {
+    const f = bad.flatMap((b) => b.results).find((r) => r.outcome === 'finding');
+    f.severity = null;
+  });
+  expectReject('stateless: a missing group bundle is rejected', (bad) => {
+    bad.splice(0, 1);
+  });
+  expectReject('stateless: a duplicated group bundle is rejected', (bad) => {
+    bad.push(clone(bad[0]));
+  });
+  const foreign = assembleSession({
+    scanId: 'stateless-verify-0003', target: 'https://unverified-fixture.test/', attested: true,
+    bundles: clone(bundles).map((b) => ({ ...b, requests: [] })), ip: 'verify-stateless',
+  });
+  check('stateless: assembly stamps the DERIVED policy, never a claimed one (unverified -> restricted)',
+    foreign.policyName === 'restricted' && foreign.authorizationState === 'attested');
 }
 
 for (const s of servers) {

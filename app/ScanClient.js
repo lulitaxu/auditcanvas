@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import ReportView from './ReportView';
 
 const OUTCOME_LABEL = {
@@ -163,8 +163,16 @@ export default function ScanClient() {
     }
   }
 
-  // Drive one scan session through its per-group steps and load the
-  // finalized report. Shared by fresh scans and rescans.
+  // The finalized report a rescan follows, held client-side: the
+  // stateless flow keeps reports with the client and posts both to
+  // /api/scan/diff (serverless instances share no scan state).
+  const prevReportRef = useRef(null);
+
+  // Drive one scan through its per-group steps and finalize it. The
+  // steps are stateless (each runs one group in a fresh server
+  // context); the client carries the per-group bundles to
+  // /api/scan/finalize, which re-validates everything server-side
+  // before a report exists. Shared by fresh scans and rescans.
   async function driveScan(start) {
     setScan(start);
     setGroupStatus(start.groupStatus);
@@ -172,28 +180,47 @@ export default function ScanClient() {
     setReport(null);
     setDiff(null);
 
+    const bundles = [];
     for (const g of start.groups) {
       setGroupStatus((prev) => ({ ...prev, [g.id]: 'running' }));
       const stepRes = await fetch('/api/scan/step', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ scanId: start.scanId, group: g.id }),
+        body: JSON.stringify({ scanId: start.scanId, target: start.target, attested: start.attested, group: g.id }),
       });
       const step = await stepRes.json();
       if (!stepRes.ok) throw new Error(step.error || `The ${g.name} step failed.`);
+      bundles.push({ group: g.id, results: step.results, evidence: step.evidence, requests: step.requests });
       setResults((prev) => [...prev, ...step.results]);
-      setGroupStatus(step.groupStatus);
+      setGroupStatus((prev) => ({ ...prev, [g.id]: 'done' }));
     }
 
-    const repRes = await fetch(`/api/scan/${start.scanId}`);
+    const repRes = await fetch('/api/scan/finalize', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        scan: {
+          scanId: start.scanId,
+          target: start.target,
+          attested: start.attested,
+          rescanOf: start.rescanOf,
+          createdAt: start.createdAt,
+        },
+        bundles,
+      }),
+    });
     const rep = await repRes.json();
     if (!repRes.ok) throw new Error(rep.error || 'Could not load the report.');
     setReport(rep);
 
-    // A rescan carries its lineage: fetch the diff against the scan it
-    // followed so the report opens with what changed.
-    if (start.rescanOf) {
-      const diffRes = await fetch(`/api/scan/${start.scanId}/diff`);
+    // A rescan carries its lineage: diff the fresh report against the
+    // one it followed so the report opens with what changed.
+    if (start.rescanOf && prevReportRef.current) {
+      const diffRes = await fetch('/api/scan/diff', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ before: prevReportRef.current, after: rep }),
+      });
       const d = await diffRes.json();
       if (diffRes.ok) setDiff(d);
     }
@@ -202,6 +229,7 @@ export default function ScanClient() {
   async function runScan(targetUrl, isAttested) {
     setBusy(true);
     setError(null);
+    prevReportRef.current = null;
     setReport(null);
     setDiff(null);
     setResults([]);
@@ -227,11 +255,16 @@ export default function ScanClient() {
   // diff: which findings the fresh evidence resolves, which are new,
   // and which are still there.
   async function rescan() {
-    if (!scan) return;
+    if (!scan || !report) return;
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch(`/api/scan/${scan.scanId}/rescan`, { method: 'POST' });
+      prevReportRef.current = report;
+      const res = await fetch('/api/scan/rescan', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ target: report.target, attested: scan.attested, rescanOf: scan.scanId }),
+      });
       const start = await res.json();
       if (!res.ok) throw new Error(start.error || 'Could not start the rescan.');
       await driveScan(start);

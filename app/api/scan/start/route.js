@@ -1,12 +1,16 @@
-import { createScan, checkScanAllowed, scanSummary } from '../../../../src/lib/scanstore.js';
+import { checkScanAllowed, startScanDescriptor } from '../../../../src/lib/scanstore.js';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+export const maxDuration = 30;
 
 // POST /api/scan/start { url, attested }
-// Creates a scan session. Policy is decided server-side: only configured
-// demo hosts get the full policy; every other target gets the restricted
-// passive policy no matter what the client claims (SPEC.md).
+// Issues a stateless scan descriptor. Policy is decided server-side:
+// the app's own seeded demo target (same origin, /api/demo-target),
+// configured demo hosts, and DNS-verified hosts get the full policy;
+// every other target gets the restricted passive policy no matter what
+// the client claims (SPEC.md). No session is stored: on serverless the
+// client carries the descriptor and the step bundles to /finalize.
 export async function POST(request) {
   let body;
   try {
@@ -21,13 +25,14 @@ export async function POST(request) {
     request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
     request.headers.get('x-real-ip') ||
     'local';
+  const selfOrigin = new URL(request.url).origin;
 
-  const allowed = checkScanAllowed(url, ip);
+  const allowed = checkScanAllowed(url, ip, selfOrigin);
   if (!allowed.ok) return Response.json({ error: allowed.reason }, { status: allowed.status });
 
   try {
-    const session = createScan({ url, attested: body.attested === true, ip });
-    return Response.json(scanSummary(session));
+    const descriptor = startScanDescriptor({ url, attested: body.attested === true, ip, selfOrigin });
+    return Response.json(descriptor);
   } catch (err) {
     return Response.json(
       { error: `Target rejected: ${err && err.message ? err.message : String(err)}` },

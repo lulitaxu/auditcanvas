@@ -3,6 +3,7 @@ import { finalizeReport } from '../../../../src/lib/pipeline.js';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
 
 // GET /api/scan/[id] — the finalized report: deterministic bundle +
 // scores + reproducibility stamp, with chains validated/classified and

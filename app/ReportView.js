@@ -327,6 +327,27 @@ function DiffBlock({ diff }) {
 export default function ReportView({ report, scanId, diff = null, onRescan = null, busy = false }) {
   const [mode, setMode] = useState('owner');
   const technical = mode === 'technical';
+
+  // Downloads are built statelessly from the finalized report itself
+  // (POST /api/scan/evidence, /api/scan/fix-pack): on serverless there
+  // is no durable per-scan server state for an ID-keyed GET to find.
+  async function download(kind, filename) {
+    try {
+      const res = await fetch(`/api/scan/${kind}`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ report }),
+      });
+      if (!res.ok) return;
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch { /* a failed download leaves the report on screen */ }
+  }
   return (
     <div>
       <div className="mode-toggle" role="group" aria-label="Report mode">
@@ -340,8 +361,8 @@ export default function ReportView({ report, scanId, diff = null, onRescan = nul
           ) : null}
           {scanId ? (
             <>
-              <a className="btn secondary" href={`/api/scan/${scanId}/evidence`} download="auditcanvas-evidence.json">auditcanvas-evidence.json</a>
-              <a className="btn secondary" href={`/api/scan/${scanId}/fix-pack`} download="auditcanvas-fix-pack.zip">auditcanvas-fix-pack.zip</a>
+              <button className="btn secondary" type="button" onClick={() => download('evidence', 'auditcanvas-evidence.json')}>auditcanvas-evidence.json</button>
+              <button className="btn secondary" type="button" onClick={() => download('fix-pack', 'auditcanvas-fix-pack.zip')}>auditcanvas-fix-pack.zip</button>
             </>
           ) : null}
         </span>

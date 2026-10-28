@@ -13,8 +13,42 @@
 //    verifies the fix. Only files applicable to the detected stack are
 //    generated: an nginx config is never produced for a deployment
 //    whose stack gives no sign of nginx.
-import { EVIDENCE_SCHEMA_VERSION, SCANNER_VERSION } from './evidence.js';
+import {
+  EVIDENCE_SCHEMA_VERSION,
+  SCANNER_VERSION,
+  validateCheckResult,
+  validateEvidenceItem,
+  unresolvedEvidenceIds,
+} from './evidence.js';
 import { createZip } from './zip.js';
+
+// A report supplied by the client (the stateless flow keeps finalized
+// reports client-side; downloads and diffs post them back) is never
+// trusted as-is: every result and evidence item must pass the same
+// schema validators the scanner's own output passes, every evidence
+// reference must resolve inside the bundle, and the integrity block
+// is recomputed here rather than taken from the payload.
+export function assertClientReport(report) {
+  if (!report || typeof report !== 'object') throw new Error('A report object is required.');
+  if (typeof report.target !== 'string' || !report.target) throw new Error('Report has no target.');
+  if (!Array.isArray(report.results) || !Array.isArray(report.evidence)) {
+    throw new Error('Report must carry results and evidence arrays.');
+  }
+  if (report.results.length > 512 || report.evidence.length > 1024) {
+    throw new Error('Report exceeds the maximum accepted size.');
+  }
+  for (const r of report.results) {
+    const errs = validateCheckResult(r);
+    if (errs.length) throw new Error(`Invalid check result in report: ${errs.join('; ')}`);
+  }
+  for (const e of report.evidence) {
+    const errs = validateEvidenceItem(e);
+    if (errs.length) throw new Error(`Invalid evidence item in report: ${errs.join('; ')}`);
+  }
+  const unresolved = unresolvedEvidenceIds(report.results, report.evidence);
+  if (unresolved.length) throw new Error(`Report evidence references do not resolve: ${unresolved.join(', ')}`);
+  return { ...report, integrity: { unresolvedEvidenceIds: [], ok: true } };
+}
 
 export const EVIDENCE_FILENAME = 'auditcanvas-evidence.json';
 export const FIX_PACK_FILENAME = 'auditcanvas-fix-pack.zip';
