@@ -10,7 +10,7 @@
 //    Set-Cookie is stored as attribute flags, never values.
 
 export const SCANNER_VERSION = '0.1.0';
-export const RULES_VERSION = '1.0.0';
+export const RULES_VERSION = '1.1.0';
 export const EVIDENCE_SCHEMA_VERSION = 1;
 
 export const OUTCOMES = Object.freeze(['pass', 'finding', 'inconclusive', 'not-assessed']);
@@ -190,7 +190,10 @@ export function makeCheck({ group, check, outcome, severity = null, title, detai
 // group IDs are frozen by SPEC.md and mirror scanner/index.js; the
 // check names mirror the makeCheck call sites in each scanner module
 // (plus 'group-error', the degraded result scanner/index.js emits
-// when a group fails). Two groups build names dynamically:
+// when a group fails). The exposure entry (SPEC addendum 2026-10-29)
+// mirrors scanner/exposure.js the same way: its exact list is the
+// always/conditionally emitted checks, and its one pattern admits the
+// seven per-class js-secret checks. Two groups build names dynamically:
 //  - exposed derives names from its fixed path list (/.git/HEAD ->
 //    git-head, /.env -> env, /wp-admin/ -> wp-admin, ...);
 //  - stack appends the detected library and CVE id
@@ -233,6 +236,17 @@ export const CHECK_CATALOG = Object.freeze({
   exposed: Object.freeze({
     exact: Object.freeze(['git-head', 'env', 'wp-admin', 'server-status', 'ds-store', 'phpinfo-php', 'group-error']),
     patterns: Object.freeze([]),
+  }),
+  exposure: Object.freeze({
+    exact: Object.freeze([
+      'env-local', 'env-production', 'env-development', 'env-bak', 'env-old',
+      'git-config',
+      'js-secrets', 'supabase-config', 'client-keys', 'firebase-rtdb',
+      'verbose-errors', 'admin-route', 'debug-route', 'group-error',
+    ]),
+    patterns: Object.freeze([
+      /^js-secret-(aws-access-key|aws-secret|stripe-live|github|supabase-service|private-key|slack)$/,
+    ]),
   }),
   stack: Object.freeze({
     exact: Object.freeze(['none-detected', 'fetch', 'group-error']),

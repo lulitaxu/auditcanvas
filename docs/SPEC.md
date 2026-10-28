@@ -400,3 +400,67 @@ Dates, the $150 credit, and the banned list in this spec come from the
 official rules, FAQ, and resources posts Arz received from the organizers
 (Oct 26). The one technical unknown, model ID + structured-output support
 on his account, is a Night 0 verification, not an assumption.
+
+---
+
+## Addendum (2026-10-29, post-v2.2): Gemini dev fallback + finalize hardening
+
+Two implementation additions that do not change the locked v2.2 scope:
+
+- **Bundle signing (sweep fixes H1/H2/M4).** Step bundles are
+  HMAC-signed by the server (`BUNDLE_SIGNING_SECRET`) and verified at
+  assembly/finalize and in the download routes before any contents
+  are trusted; `/finalize` is metered per IP and finalized reports
+  are cached by the verified bundle-set digest, so the three-call
+  cap holds per bundle-set. Bare client-supplied reports posted to
+  the download routes get recomputed scores, a re-derived stamp, and
+  an explicit client-supplied-unverified integrity label — never the
+  server path's `integrity.ok`.
+- **Gemini fallback adapter.** `AUDITOR_PROVIDER=gemini` (server env
+  only) routes the auditor/refutation transports to Gemini
+  (`GEMINI_API_KEY`, `GEMINI_MODEL` default `gemini-3.8-flash`,
+  capacity fallback `gemini-3.5-flash-lite`) behind the same call
+  contract and the same validators. It exists to prove the model
+  layer against a live model before the Meta key verification and as
+  an emergency fallback at verification time. **Meta (Muse Spark)
+  remains the submission provider, and the public demo runs Meta.**
+  The report stamp records the provider and the model that actually
+  answered, whichever is active.
+
+---
+
+## Addendum (2026-10-29, founder-approved scope change): the Exposure group
+
+One scanner group is added to the frozen eight, by the founder's
+explicit decision on 2026-10-29, from the "vibecoders getting hacked"
+checklist. The v2.2 statement "no new scanner categories beyond the
+frozen eight groups" is amended for this group only; everything else
+in the out-of-scope list stands.
+
+**Group 9 — Exposure & secrets.** Non-destructive, unauthenticated
+GETs only, under both scan policies (restricted scales counts, as
+Exposed paths already does). Checks: environment-file variants
+(/.env.local, /.env.production, /.env.development, /.env.bak,
+/.env.old — /.env itself remains in Exposed paths) validated by
+content proof against the soft-404 baseline; /.git/config content
+proof; anchored secret patterns in the target's own first-party
+JavaScript (AWS key pair formats, Stripe live secret keys, GitHub
+tokens, Supabase service-role JWTs, private-key blocks, Slack
+tokens), with evidence redacted by construction (pattern class,
+bounded prefix, sha256 fingerprint — never the secret); a single
+shallow read probe of a Firebase Realtime Database discovered in
+the site's own client config (top-level key names only, values are
+never returned by the shallow API), gated to Firebase hosts; verbose
+error signatures in the soft-404 baseline response.
+
+**Honesty rules specific to this group.** Presence is never a
+finding: Supabase/Firebase client configuration, Stripe publishable
+keys, Google browser keys, and admin/debug sign-in surfaces are
+reported Inconclusive with the reason stated, because their safety
+depends on server-side controls (RLS, key restrictions,
+authentication) that an anonymous scan cannot evaluate. Weak auth,
+authorization/IDOR, client-side-only checks, input validation, and
+SQL/NoSQL injection remain NOT assessed: they require authenticated
+interaction or injection payloads, which the non-destructive promise
+excludes. No entropy heuristics: a string that merely looks random
+is not evidence of a secret.

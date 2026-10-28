@@ -53,9 +53,12 @@ is not evidence.
 ### What AuditCanvas does
 
 Point AuditCanvas at a website you own. A deterministic engine runs
-eight check groups modelled on the OWASP Web Security Testing Guide —
+nine check groups modelled on the OWASP Web Security Testing Guide —
 security headers, TLS, cookies, CORS, exposed paths (with soft-404
-baselining), client stack and CVE matching against affected version
+baselining), exposure and secrets (env-file variants, anchored secret
+patterns in first-party JavaScript — evidenced as pattern class and
+fingerprint, never the secret — and a host-gated shallow Firebase
+probe), client stack and CVE matching against affected version
 ranges in a versioned NVD snapshot, email posture (SPF/DMARC with a
 proper DNS error taxonomy), and redirects and mixed content. Every
 check ends in exactly one of four outcomes: **Pass, Finding,
@@ -159,7 +162,8 @@ Everything in the repository was built during the hackathon window
 (Oct 26 – Nov 4, 2026), from a locked design spec (SPEC.md, v2.2)
 committed before the code:
 
-- The SSRF-safe fetch layer and the eight frozen scanner groups, with
+- The SSRF-safe fetch layer and the eight frozen scanner groups plus
+  the Exposure group (founder-approved addendum, SPEC.md 2026-10-29), with
   a fixture suite (vulnerable, hardened, slow/timeout, and garbage
   origins) that the scanner's verdicts are asserted against:
   **73/73 assertions green**, including zero findings on the hardened

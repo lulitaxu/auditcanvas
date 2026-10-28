@@ -541,9 +541,9 @@ export default function ScanClient() {
       {progress}
 
       <footer className="colophon">
-        AuditCanvas runs eight deterministic check groups (headers, TLS, cookies, CORS,
-        exposed paths, client stack &amp; CVEs, email posture, redirects &amp; mixed
-        content). A result of Inconclusive is never counted as a pass. Reports expire
+        AuditCanvas runs nine deterministic check groups (headers, TLS, cookies, CORS,
+        exposed paths, exposure &amp; secrets, client stack &amp; CVEs, email posture,
+        redirects &amp; mixed content). A result of Inconclusive is never counted as a pass. Reports expire
         after 7 days and carry noindex.
       </footer>
     </main>

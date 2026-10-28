@@ -388,11 +388,85 @@ function redirectsFix(f) {
   };
 }
 
+// Exposure group fixes (SPEC addendum 2026-10-29, design §6): the
+// remediation for a leaked secret is rotation, not configuration, so
+// these stay deliberately generic — no stack-specific snippet is
+// implied by any exposure finding.
+function exposureFix(f) {
+  if (f.checkId.startsWith('exposure.env-') || f.checkId === 'exposure.git-config') {
+    const path = f.title.match(/\((\/[^)]+)\)/)?.[1] || 'the exposed file';
+    return {
+      conditions: `Applies while ${path} exists under the web root. The durable fix is removing the file from the deployed tree; a server block is defence in depth.`,
+      placement: { generic: 'In the web server configuration for this site; AND remove the file from the deployment.' },
+      body: {
+        generic: `1. Remove ${path} from the web root / deployment artifact.
+2. Block the path at the server so a redeploy cannot silently re-expose it.
+3. If the file named live credentials or services (environment files do), ROTATE those credentials: the file must be assumed public since exposure.`,
+      },
+      verify: `Request ${path} again and confirm a 404 (or 403). Rescan to verify.`,
+    };
+  }
+  if (f.checkId.startsWith('exposure.js-secret-')) {
+    return {
+      conditions: 'Applies to the credential identified in the finding by its fingerprint. Rotation comes first; deleting the string from the bundle without rotating leaves a live, copied secret valid.',
+      placement: { generic: 'In the provider console named by the finding (AWS IAM, Stripe, GitHub, Supabase, or Slack), then in the build pipeline that produced the bundle.' },
+      body: {
+        generic: `1. ROTATE / REVOKE the credential now, in the provider's console. Identify it with the sha256 fingerprint in the finding's evidence: hash your key inventory and match the fingerprint — the report never contains the secret itself.
+2. Remove the secret from the client code and from the deployed bundle; rebuild and redeploy.
+3. Move the credential server-side: browsers may only ever receive publishable/anon keys designed to be public.
+4. Check the provider's audit log for use of the exposed credential since the bundle shipped.`,
+      },
+      verify: 'Confirm the old credential is rejected by the provider, reload the page, and confirm the served bundle no longer contains it. Rescan to verify.',
+    };
+  }
+  if (f.checkId === 'exposure.firebase-rtdb') {
+    return {
+      conditions: 'Applies to the Firebase Realtime Database named by the finding. Client configuration (apiKey, databaseURL) is public by design; the RULES are the access control.',
+      placement: { generic: 'In the Firebase console: Realtime Database -> Rules for this project.' },
+      body: {
+        generic: `Restrict the rules so reads and writes require authentication and are scoped per user, e.g.:
+{
+  "rules": {
+    "users": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    }
+  }
+}
+Adapt the paths to your data layout; the principle is default-deny at the root, per-user grants below it.`,
+      },
+      verify: 'Request <databaseURL>/.json?shallow=true without credentials and confirm a permission-denied response. Rescan to verify.',
+    };
+  }
+  if (f.checkId === 'exposure.verbose-errors') {
+    return {
+      conditions: 'Applies to the production error handler for this origin.',
+      placement: { generic: 'In the framework/server error-handling configuration for production.' },
+      body: {
+        generic: `Serve a generic error page for 4xx/5xx in production:
+- Disable debug/verbose error output (framework debug mode off) outside development.
+- Log stack traces server-side only; never render frames, exception text, or filesystem paths to clients.
+- Return a stable error body with no version or path information.`,
+      },
+      verify: 'Request a nonexistent path and confirm the response contains no stack frames or internal paths. Rescan to verify.',
+    };
+  }
+  return {
+    conditions: 'As described in the finding.',
+    placement: { generic: 'Where the configuration named in the finding lives.' },
+    body: { generic: 'Apply the change described in the finding text, then rescan to verify.' },
+    verify: 'Rescan with AuditCanvas to verify.',
+  };
+}
+
 const FIX_BUILDERS = {
   headers: headersFix,
   cookies: cookiesFix,
   cors: corsFix,
   exposed: exposedFix,
+  exposure: exposureFix,
   stack: stackFix,
   tls: tlsFix,
   email: emailFix,

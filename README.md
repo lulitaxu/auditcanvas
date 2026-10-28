@@ -2,7 +2,7 @@
 
 Turn real security evidence into verified, understandable remediation.
 
-AuditCanvas scans a website with a deterministic engine (eight check
+AuditCanvas scans a website with a deterministic engine (nine check
 groups, four outcomes: Pass / Finding / Inconclusive / Not assessed),
 stores redacted evidence for every result, and — when configured — has a
 Muse Spark auditor explain, prioritize, and adversarially re-check the
@@ -118,7 +118,7 @@ src/lib/
   safefetch.js           Pinned-IP fetch: SNI + cert verification, redirect policy
   dnsutil.js             TXT lookups with the spec's DNS error taxonomy
   context.js             Scan policies (full/restricted), budgets, scan context
-  scanner/               The eight frozen check groups + registry
+  scanner/               The eight frozen check groups + exposure (addendum) + registry
   cve-snapshot.json      Versioned CVE snapshot (NVD-verified pull, version in every report stamp)
   scoring.js             Deterministic Risk / Coverage / Confidence
   auditor.js             Muse Spark call sites (max 3/scan), report validator
@@ -140,7 +140,7 @@ scripts/generate-samples.mjs  Real scans -> Judge-mode sample reports
 
 ## Current state (honest list)
 
-- **Built and verified:** the eight scanner groups, SSRF-safe fetch,
+- **Built and verified:** the nine scanner groups, SSRF-safe fetch,
   deterministic scoring, evidence graph canvas with Owner/Technical
   modes, Judge mode, DNS TXT ownership, chains validation +
   classification, refutation with deterministic assessment, both

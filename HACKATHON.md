@@ -22,7 +22,7 @@ delete, or silently downgrade a finding.
 
 Five stages, in order:
 
-1. **Deterministic scanner** — eight frozen check groups (below) produce
+1. **Deterministic scanner** — nine check groups (below) produce
    check results in exactly four outcomes: Pass / Finding / Inconclusive /
    Not assessed. Inconclusive never counts as a pass.
 2. **Evidence validator** — every result references stored evidence by
@@ -59,7 +59,7 @@ Conditional renders dashed and is never presented as confirmed; Unproven
 is not rendered as a path. CORS + cookie flags alone never prove session
 theft (HttpOnly governs script access; Secure governs transport).
 
-## The eight scanner groups (frozen)
+## The scanner groups (eight frozen + the Exposure addendum)
 
 1. Security headers (HSTS, CSP, XCTO, Referrer-Policy, Permissions-Policy, framing)
 2. TLS (protocol, chain, hostname, expiry)
@@ -69,6 +69,7 @@ theft (HttpOnly governs script access; Secure governs transport).
 6. Client stack + CVEs matched against affected version ranges in a versioned NVD snapshot
 7. Email posture: SPF/DMARC with the DNS error taxonomy (NXDOMAIN/timeout/SERVFAIL = Inconclusive; only a confirmed empty answer counts as missing)
 8. Redirects + mixed content (open redirect only when a bounded probe's Location is verified off-origin)
+9. Exposure & secrets (addendum 2026-10-29, founder-approved): env-file variants and /.git/config proven by content against the soft-404 baseline; anchored secret patterns in first-party JavaScript with redacted-by-construction evidence; one shallow, host-gated Firebase RTDB probe (key names only); verbose-error signatures. Presence-only material (Supabase/Firebase config, publishable keys, admin/debug surfaces) is Inconclusive with the reason stated, never a finding.
 
 ## Safety model
 

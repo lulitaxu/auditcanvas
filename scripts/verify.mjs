@@ -39,6 +39,17 @@ if (!process.env.AC_VERIFY_CHILD) {
     console.log(`[verify] openssl CA generation failed (${err.message}); HTTPS fixture assertions will be skipped.`);
   }
   const env = { ...process.env, AC_VERIFY_CHILD: '1', AC_CERT_DIR: CERT_DIR };
+  // The fixture suite talks to loopback aliases (127.0.0.1-127.0.0.10)
+  // over raw sockets. Some environments export a global egress proxy
+  // (NODE_USE_ENV_PROXY=1 + *_proxy vars) whose no_proxy list covers
+  // only 127.0.0.1; Node's HTTP agent would route the other loopback
+  // fixtures through that proxy, which hangs up on them — making
+  // HTTP-dependent assertions pass vacuously or fail spuriously. The
+  // child process only ever talks to the fixtures, so the proxy env
+  // is stripped for it. No-op on machines without a proxy env.
+  for (const k of ['NODE_USE_ENV_PROXY', 'http_proxy', 'https_proxy', 'HTTP_PROXY', 'HTTPS_PROXY', 'ALL_PROXY', 'all_proxy']) {
+    delete env[k];
+  }
   if (httpsOk) env.NODE_EXTRA_CA_CERTS = path.join(CERT_DIR, 'ca.pem');
   else env.AC_NO_HTTPS = '1';
   const r = spawnSync(process.execPath, [SCRIPT], { stdio: 'inherit', env });
@@ -113,6 +124,12 @@ await boot(fixtures.startVulnerableHttp, 80, '::1');
 await boot(fixtures.startHardenedHttp, 80, '127.0.0.2');
 await boot(fixtures.startSlowHttp, 80, '127.0.0.3');
 await boot(fixtures.startGarbageTcp, 80, '127.0.0.4');
+await boot(fixtures.startExposureFirebaseOpenHttp, 80, '127.0.0.5');
+await boot(fixtures.startExposureFirebaseClosedHttp, 80, '127.0.0.6');
+await boot(fixtures.startLeakyErrorHttp, 80, '127.0.0.7');
+await boot(fixtures.startWeakErrorHttp, 80, '127.0.0.8');
+await boot(fixtures.startBigBundleLateKeyHttp, 80, '127.0.0.9');
+await boot(fixtures.startBigBundleEarlyKeyHttp, 80, '127.0.0.10');
 
 const dnsMissing = async () => ({ status: 'empty' });
 const dnsValid = async (host) =>
@@ -177,7 +194,7 @@ if (!process.env.AC_NO_HTTPS) {
 {
   const { results: rs } = await scan(`http://127.0.0.2/`, { dnsTxt: dnsValid });
   const found = findingsOf(rs);
-  check('hardened: ZERO findings across all eight groups', found.length === 0, JSON.stringify(found.map((f) => f.checkId)));
+  check('hardened: ZERO findings across all nine groups', found.length === 0, JSON.stringify(found.map((f) => f.checkId)));
   check('hardened: current jQuery (3.7.1) produces no CVE finding', !rs.some((r) => r.group === 'stack' && r.outcome === 'finding'));
   check('hardened: valid SPF/DMARC pass', byId(rs, 'email.spf')?.outcome === 'pass' && byId(rs, 'email.dmarc')?.outcome === 'pass');
 }
@@ -431,7 +448,7 @@ const corsProposal = (extraNodes = []) => ({
     policyForTarget(demoUrl, {}).policy.name === 'restricted');
   const demoDescriptor = startScanDescriptor({ url: demoUrl.toString(), attested: true, ip: 'verify-stateless', selfOrigin: 'https://auditcanvas.vercel.app' });
   check('descriptor: start issues the full-policy descriptor for the seeded demo',
-    demoDescriptor.scanPolicy === 'full' && demoDescriptor.groups.length === 8 && typeof demoDescriptor.scanId === 'string');
+    demoDescriptor.scanPolicy === 'full' && demoDescriptor.groups.length === 9 && typeof demoDescriptor.scanId === 'string');
 
   // STATELESS ASSEMBLY — per-group steps in fresh contexts, assembled
   // server-side, must reproduce the monolithic scan's findings.
@@ -728,6 +745,176 @@ const corsProposal = (extraNodes = []) => ({
       else process.env[k] = v;
     }
   }
+}
+
+// --- exposure group ---
+// The Exposure & secrets group (SPEC addendum 2026-10-29) against the
+// loopback fixtures, in fresh per-group contexts exactly as the
+// production /step route runs them. Fixture secrets are format-valid
+// fakes defined in fixtures/server.mjs; the leak assertions below are
+// the group's redaction contract, tested end to end.
+{
+  const { isCatalogCheck, validateCheckResult } = await import('../src/lib/evidence.js');
+  const { createHash } = await import('node:crypto');
+  const sha12 = (s) => createHash('sha256').update(s).digest('hex').slice(0, 12);
+  const F = fixtures;
+
+  async function exposureScan(baseUrl, policy = POLICIES.full) {
+    const ctx = createScanContext({
+      baseUrl,
+      policy: { ...policy },
+      authorizationState: 'verified',
+      allowPrivate: true,
+      dnsTxtFn: dnsMissing,
+    });
+    const rs = await runGroup(ctx, 'exposure');
+    return { rs, evidence: ctx.evidence.items, requests: ctx.requests.length };
+  }
+
+  // POSITIVE — vulnerable fixture, full policy.
+  const vx = await exposureScan('http://127.0.0.1/');
+  const vById = (id) => vx.rs.find((r) => r.checkId === id);
+  check('exposure: /.env.local content proof is a HIGH finding',
+    vById('exposure.env-local')?.outcome === 'finding' && vById('exposure.env-local')?.severity === 'high',
+    JSON.stringify(vById('exposure.env-local')));
+  check('exposure: soft-404 env variant is Inconclusive [soft-404-ambiguous], never a finding',
+    vById('exposure.env-production')?.outcome === 'inconclusive'
+    && vById('exposure.env-production')?.detail.startsWith('[reason:soft-404-ambiguous]'),
+    JSON.stringify(vById('exposure.env-production')));
+  check('exposure: every unplanted env variant is Inconclusive (soft-404), never a finding',
+    ['env-development', 'env-bak', 'env-old'].every((c) => vById(`exposure.${c}`)?.outcome === 'inconclusive'),
+    JSON.stringify(vx.rs.filter((r) => r.checkId.startsWith('exposure.env-'))));
+  const gitRes = vById('exposure.git-config');
+  check('exposure: /.git/config content proof is a MEDIUM finding',
+    gitRes?.outcome === 'finding' && gitRes?.severity === 'medium', JSON.stringify(gitRes));
+  const gitEv = vx.evidence.find((e) => e.kind === 'content-scan' && e.data.kind === 'git-config');
+  check('exposure: git evidence flags the credential-embedding remote without storing it',
+    gitEv?.data.remoteHasEmbeddedCredentials === true && gitEv?.data.hasRemote === true,
+    JSON.stringify(gitEv?.data));
+
+  const classSev = {
+    'js-secret-stripe-live': 'high',
+    'js-secret-aws-access-key': 'medium',
+    'js-secret-aws-secret': 'high',
+    'js-secret-github': 'high',
+    'js-secret-supabase-service': 'high',
+    'js-secret-private-key': 'high',
+    'js-secret-slack': 'high',
+  };
+  for (const [c, sev] of Object.entries(classSev)) {
+    check(`exposure: planted ${c} is a ${sev.toUpperCase()} finding`,
+      vById(`exposure.${c}`)?.outcome === 'finding' && vById(`exposure.${c}`)?.severity === sev,
+      JSON.stringify(vById(`exposure.${c}`)));
+  }
+
+  const fbRes = vById('exposure.firebase-rtdb');
+  check('exposure: open Firebase RTDB (shallow read) is a HIGH finding',
+    fbRes?.outcome === 'finding' && fbRes?.severity === 'high', JSON.stringify(fbRes));
+  const fbEv = vx.evidence.find((e) => e.kind === 'content-scan' && e.data.kind === 'firebase-rtdb-root');
+  check('exposure: firebase evidence records sorted top-level key NAMES only',
+    JSON.stringify(fbEv?.data.keyNames) === JSON.stringify(['_meta', 'orders', 'users']) && fbEv?.data.keyCount === 3,
+    JSON.stringify(fbEv?.data));
+  check('exposure: js-secrets aggregate is Pass even when findings exist',
+    vById('exposure.js-secrets')?.outcome === 'pass', JSON.stringify(vById('exposure.js-secrets')));
+
+  // LEAK — the serialized step output contains no planted secret
+  // beyond its bounded prefix, and DOES contain the sha256
+  // fingerprints the owner uses to identify their keys.
+  const blob = JSON.stringify({ results: vx.rs, evidence: vx.evidence });
+  check('leak: the full Stripe live key never appears in results/evidence', !blob.includes(F.FIXTURE_STRIPE_LIVE));
+  check('leak: the AWS secret value never appears in results/evidence', !blob.includes(F.FIXTURE_AWS_SECRET));
+  check('leak: the full GitHub token never appears in results/evidence', !blob.includes(F.FIXTURE_GITHUB_TOKEN));
+  check('leak: the full Slack token never appears in results/evidence', !blob.includes(F.FIXTURE_SLACK_TOKEN));
+  check('leak: the full AWS access key ID never appears in results/evidence', !blob.includes(F.FIXTURE_AWS_ACCESS_KEY));
+  check('leak: the full service-role JWT never appears in results/evidence', !blob.includes(F.FIXTURE_SERVICE_JWT));
+  check('leak: the git remote password never appears in results/evidence', !blob.includes(F.FIXTURE_GIT_REMOTE_PASSWORD));
+  check('leak: env file values never appear in results/evidence', !blob.includes('fixture-not-a-real-secret'));
+  check('leak: findings carry sha256 fingerprints the owner can match',
+    blob.includes(sha12(F.FIXTURE_STRIPE_LIVE)) && blob.includes(sha12(F.FIXTURE_GITHUB_TOKEN)) && blob.includes(sha12(F.FIXTURE_SERVICE_JWT)));
+
+  check('exposure: full-policy step stays within the 17-request worst case', vx.requests <= 17, `requests=${vx.requests}`);
+
+  // NEGATIVE — hardened fixture: presence-only material, zero findings.
+  const hx = await exposureScan('http://127.0.0.2/');
+  const hById = (id) => hx.rs.find((r) => r.checkId === id);
+  check('exposure: hardened fixture produces ZERO exposure findings',
+    hx.rs.filter((r) => r.outcome === 'finding').length === 0,
+    JSON.stringify(hx.rs.filter((r) => r.outcome === 'finding').map((r) => r.checkId)));
+  check('exposure: Stripe publishable key is NOT a finding; client-keys is Inconclusive [publishable-key]',
+    !hById('exposure.js-secret-stripe-live')
+    && hById('exposure.client-keys')?.outcome === 'inconclusive'
+    && hById('exposure.client-keys')?.detail.startsWith('[reason:publishable-key]'),
+    JSON.stringify(hById('exposure.client-keys')));
+  check('exposure: Google API key produced no finding (client-keys names it)',
+    hById('exposure.client-keys')?.detail.includes('Google API key') === true);
+  check('exposure: anon JWT is NOT a finding; supabase-config is Inconclusive [config-presence]',
+    !hById('exposure.js-secret-supabase-service')
+    && hById('exposure.supabase-config')?.outcome === 'inconclusive'
+    && hById('exposure.supabase-config')?.detail.startsWith('[reason:config-presence]'),
+    JSON.stringify(hById('exposure.supabase-config')));
+  check('exposure: closed Firebase RTDB is a Pass (rules deny unauthenticated reads)',
+    hById('exposure.firebase-rtdb')?.outcome === 'pass', JSON.stringify(hById('exposure.firebase-rtdb')));
+  check('exposure: the §4 contract details arrive untruncated (full wording, final sentences intact)',
+    hById('exposure.supabase-config')?.detail.endsWith('it was not observed.')
+    && hById('exposure.client-keys')?.detail.endsWith('WOULD be a finding).'),
+    JSON.stringify({
+      supa: hById('exposure.supabase-config')?.detail.slice(-60),
+      keys: hById('exposure.client-keys')?.detail.slice(-60),
+    }));
+
+  // VERBOSE ERRORS — strong / weak / clean baselines.
+  const lx = await exposureScan('http://127.0.0.7/');
+  const lVerb = lx.rs.find((r) => r.checkId === 'exposure.verbose-errors');
+  check('exposure: Node stack in the baseline response is a MEDIUM verbose-errors finding',
+    lVerb?.outcome === 'finding' && lVerb?.severity === 'medium', JSON.stringify(lVerb));
+  const lEv = lx.evidence.find((e) => e.kind === 'content-scan' && e.data.kind === 'error-surface');
+  check('exposure: verbose-errors evidence names the node-stack signature',
+    Array.isArray(lEv?.data.signatures) && lEv.data.signatures.includes('node-stack'), JSON.stringify(lEv?.data));
+  const wx = await exposureScan('http://127.0.0.8/');
+  const wVerb = wx.rs.find((r) => r.checkId === 'exposure.verbose-errors');
+  check('exposure: a bare Whitelabel page is Inconclusive [weak-signature], never a finding',
+    wVerb?.outcome === 'inconclusive' && wVerb?.detail.startsWith('[reason:weak-signature]'), JSON.stringify(wVerb));
+  check('exposure: verbose-errors is a Pass on the vulnerable and hardened fixtures',
+    vById('exposure.verbose-errors')?.outcome === 'pass' && hById('exposure.verbose-errors')?.outcome === 'pass');
+
+  // TRUNCATION — the 256 KB bundle cap is a first-class verdict input.
+  const late = await exposureScan('http://127.0.0.9/');
+  check('exposure: a secret beyond the bundle cap does NOT fire, and js-secrets is Inconclusive [bundle-truncated]',
+    !late.rs.some((r) => r.checkId === 'exposure.js-secret-stripe-live')
+    && late.rs.find((r) => r.checkId === 'exposure.js-secrets')?.outcome === 'inconclusive'
+    && late.rs.find((r) => r.checkId === 'exposure.js-secrets')?.detail.startsWith('[reason:bundle-truncated]'),
+    JSON.stringify(late.rs.filter((r) => r.group === 'exposure')));
+  const early = await exposureScan('http://127.0.0.10/');
+  check('exposure: a secret inside the scanned prefix fires despite bundle truncation',
+    early.rs.find((r) => r.checkId === 'exposure.js-secret-stripe-live')?.outcome === 'finding',
+    JSON.stringify(early.rs.filter((r) => r.checkId.includes('stripe'))));
+
+  // RESTRICTED POLICY — counts scale, admin/debug are not requested.
+  const rx = await exposureScan('http://127.0.0.1/', POLICIES.restricted);
+  const rById = (id) => rx.rs.find((r) => r.checkId === id);
+  check('exposure: restricted step stays within its request budget', rx.requests <= 12, `requests=${rx.requests}`);
+  check('exposure: restricted admin/debug are Not assessed [policy-restricted] with no request sent',
+    rById('exposure.admin-route')?.outcome === 'not-assessed' && rById('exposure.admin-route')?.detail.startsWith('[reason:policy-restricted]')
+    && rById('exposure.debug-route')?.outcome === 'not-assessed' && rById('exposure.debug-route')?.detail.startsWith('[reason:policy-restricted]'),
+    JSON.stringify(rx.rs.filter((r) => ['exposure.admin-route', 'exposure.debug-route'].includes(r.checkId))));
+  check('exposure: restricted omits env-development/env-old entirely (not placeholders)',
+    !rById('exposure.env-development') && !rById('exposure.env-old'));
+  check('exposure: restricted still proves /.env.local (counts scale, truth does not)',
+    rById('exposure.env-local')?.outcome === 'finding' && rById('exposure.env-local')?.severity === 'high');
+
+  // CATALOG — the H1 anti-forgery surface admits exactly this group.
+  check('catalog: exposure js-secret checks are admitted by pattern',
+    isCatalogCheck('exposure', 'js-secret-stripe-live') === true && isCatalogCheck('exposure', 'js-secrets') === true);
+  check('catalog: an entropy/heuristic check name is NOT admitted',
+    isCatalogCheck('exposure', 'js-secret-entropy') === false);
+  const wellFormed = {
+    checkId: 'exposure.firebase-rtdb', findingId: 'f-exposure-firebase-rtdb', group: 'exposure',
+    outcome: 'finding', severity: 'high', title: 't', detail: 'd', evidenceIds: [], inference: false,
+  };
+  check('catalog: a well-formed f-exposure-firebase-rtdb finding validates',
+    validateCheckResult(wellFormed).length === 0, JSON.stringify(validateCheckResult(wellFormed)));
+  check('catalog: a cross-check findingId (f-exposure-env) is rejected',
+    validateCheckResult({ ...wellFormed, findingId: 'f-exposure-env' }).length > 0);
 }
 
 for (const s of servers) {

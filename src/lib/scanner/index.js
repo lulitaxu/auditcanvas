@@ -1,10 +1,12 @@
-// Scanner registry: the eight frozen check groups (SPEC.md). No new
-// groups may be added during the 9-day build.
+// Scanner registry: the eight frozen check groups (SPEC.md) + exposure
+// (SPEC addendum 2026-10-29). No new groups may be added during the
+// 9-day build.
 import { runHeaders } from './headers.js';
 import { runTls } from './tls.js';
 import { runCookies } from './cookies.js';
 import { runCors } from './cors.js';
 import { runExposed } from './exposed.js';
+import { runExposure } from './exposure.js';
 import { runStack } from './stack.js';
 import { runEmail } from './email.js';
 import { runRedirects } from './redirects.js';
@@ -15,6 +17,7 @@ export const GROUPS = [
   { id: 'cookies', name: 'Cookies', run: runCookies },
   { id: 'cors', name: 'CORS', run: runCors },
   { id: 'exposed', name: 'Exposed paths', run: runExposed },
+  { id: 'exposure', name: 'Exposure & secrets', run: runExposure },
   { id: 'stack', name: 'Client stack & CVEs', run: runStack },
   { id: 'email', name: 'Email posture (SPF/DMARC)', run: runEmail },
   { id: 'redirects', name: 'Redirects & mixed content', run: runRedirects },

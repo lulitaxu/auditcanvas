@@ -33,7 +33,7 @@ Do all of these, in order, before the first take:
   the recording host (default `localhost,127.0.0.1` covers a local
   recording; a deployed recording needs the deployed hostname added
   server-side). One full Judge-mode demo run completes end to end in
-  rehearsal — all eight groups land, report finalizes.
+  rehearsal — all nine groups land, report finalizes.
 - [ ] **Chains + refutation rehearsed.** In rehearsal, note which
   chain the seeded demo produces (Supported or Conditional) and the
   refutation outcome on the challenged finding. Pick the matching
@@ -77,7 +77,7 @@ demo", then "Explore sample reports", so both entry points register.
 ### 0:20–1:10 — Live scan of the seeded demo, graph forming
 
 **Action:** click **Run the seeded demo**. Stay on the scan view while
-the eight groups stream in (Queued → Running → Pass / Finding /
+the nine groups stream in (Queued → Running → Pass / Finding /
 Inconclusive). As the report lands, scroll the evidence graph into
 view and let the Assets → Observations → Findings → Fixes layers
 settle.
@@ -85,12 +85,23 @@ settle.
 **Narration:**
 > "One click. No URL to type — Judge mode can't be pointed at anyone
 > else's site. This target is ours, and it is deliberately
-> misconfigured. Eight check groups run for real: headers, TLS,
-> cookies, CORS, exposed paths, the client stack against known CVE
-> ranges, email posture, redirects. Every result is stored as
-> evidence — the actual headers, the certificate fields, the DNS
-> answers. Watch the canvas build as each group lands. Nothing here
-> is a mock-up; this scan is happening now."
+> misconfigured. Nine check groups run for real: headers, TLS,
+> cookies, CORS, exposed paths, exposure and secrets, the client
+> stack against known CVE ranges, email posture, redirects. Every
+> result is stored as evidence — the actual headers, the certificate
+> fields, the DNS answers. Watch the canvas build as each group
+> lands. Nothing here is a mock-up; this scan is happening now."
+
+**Action:** as the Exposure group lands, rest on its two contrasting
+results: the Stripe finding and the Supabase inconclusive next to it.
+
+**Narration:**
+> "One more group, the new one: Exposure. It reads the site's own
+> JavaScript the way anyone can — and finds a live-format Stripe key
+> sitting in a public bundle. The report shows the pattern and a
+> fingerprint so the owner can find their key — never the key itself.
+> And next to it, an anon key the scanner refuses to call a
+> vulnerability, because it can't prove one."
 
 **Action:** at ~0:55, click the exposed-`.env` finding (or the
 highest-severity finding on screen). The trace highlights down to its
