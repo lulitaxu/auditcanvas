@@ -1,0 +1,842 @@
+{
+  "schemaVersion": 1,
+  "scanId": "xF27EGB-4I0h0szKR3SpyGlj",
+  "rescanOf": null,
+  "target": "https://nyktos.tech/",
+  "authorizationState": "attested",
+  "scanPolicy": "restricted",
+  "status": "complete",
+  "startedAt": "2026-10-28T17:24:33.507Z",
+  "updatedAt": "2026-10-28T17:24:48.396Z",
+  "groupStatus": {
+    "headers": "done",
+    "tls": "done",
+    "cookies": "done",
+    "cors": "done",
+    "exposed": "done",
+    "stack": "done",
+    "email": "done",
+    "redirects": "done"
+  },
+  "scores": {
+    "risk": {
+      "score": 20,
+      "grade": "C",
+      "label": "Guarded",
+      "cappedByHigh": false,
+      "drivers": [
+        {
+          "findingId": "f-headers-csp-unsafe-inline",
+          "severity": "medium",
+          "weight": 15,
+          "title": "CSP weakness: script-src allows 'unsafe-inline'"
+        },
+        {
+          "findingId": "f-email-dmarc-p-none",
+          "severity": "low",
+          "weight": 5,
+          "title": "DMARC policy is p=none (monitor only)"
+        }
+      ],
+      "formula": "min(100, sum of severity weights over confirmed findings) with weights high=40, medium=15, low=5, info=1; any confirmed high caps the grade band at D or worse."
+    },
+    "coverage": {
+      "ratio": 1,
+      "verdicts": 19,
+      "attempted": 19,
+      "inconclusive": 0,
+      "notAssessed": 2,
+      "formula": "checks that reached a verdict (Pass or Finding) / checks attempted. Inconclusive and Not assessed count as attempted but never as verdicts."
+    },
+    "confidence": {
+      "ratio": 1,
+      "directFindings": 2,
+      "inferredFindings": 0,
+      "totalFindings": 2,
+      "formula": "findings backed by direct evidence / all findings. A finding is not direct when its detection rests on inference, or when the refutation pass reduced its confidence."
+    },
+    "counts": {
+      "pass": 17,
+      "findings": 2,
+      "confirmedFindings": 2
+    }
+  },
+  "results": [
+    {
+      "checkId": "headers.hsts",
+      "findingId": null,
+      "group": "headers",
+      "outcome": "pass",
+      "severity": null,
+      "title": "HSTS present with a strong policy",
+      "detail": "Strict-Transport-Security: max-age=63072000; includeSubDomains; preload",
+      "evidenceIds": [
+        "ev-0001"
+      ],
+      "inference": false
+    },
+    {
+      "checkId": "headers.csp-unsafe-inline",
+      "findingId": "f-headers-csp-unsafe-inline",
+      "group": "headers",
+      "outcome": "finding",
+      "severity": "medium",
+      "title": "CSP weakness: script-src allows 'unsafe-inline'",
+      "detail": "The Content-Security-Policy was parsed per directive: script-src allows 'unsafe-inline'. Full policy in the linked evidence.",
+      "evidenceIds": [
+        "ev-0001"
+      ],
+      "inference": false
+    },
+    {
+      "checkId": "headers.xcto",
+      "findingId": null,
+      "group": "headers",
+      "outcome": "pass",
+      "severity": null,
+      "title": "X-Content-Type-Options: nosniff",
+      "detail": "MIME sniffing is disabled.",
+      "evidenceIds": [
+        "ev-0001"
+      ],
+      "inference": false
+    },
+    {
+      "checkId": "headers.referrer-policy",
+      "findingId": null,
+      "group": "headers",
+      "outcome": "pass",
+      "severity": null,
+      "title": "Referrer-Policy present",
+      "detail": "Referrer-Policy: strict-origin-when-cross-origin",
+      "evidenceIds": [
+        "ev-0001"
+      ],
+      "inference": false
+    },
+    {
+      "checkId": "headers.permissions-policy",
+      "findingId": null,
+      "group": "headers",
+      "outcome": "pass",
+      "severity": null,
+      "title": "Permissions-Policy present",
+      "detail": "Browser features are governed by an explicit policy.",
+      "evidenceIds": [
+        "ev-0001"
+      ],
+      "inference": false
+    },
+    {
+      "checkId": "headers.framing",
+      "findingId": null,
+      "group": "headers",
+      "outcome": "pass",
+      "severity": null,
+      "title": "Framing is restricted",
+      "detail": "CSP frame-ancestors is set.",
+      "evidenceIds": [
+        "ev-0001"
+      ],
+      "inference": false
+    },
+    {
+      "checkId": "tls.protocol",
+      "findingId": null,
+      "group": "tls",
+      "outcome": "pass",
+      "severity": null,
+      "title": "TLS protocol TLSv1.3",
+      "detail": "The negotiated protocol is TLS 1.2 or newer.",
+      "evidenceIds": [
+        "ev-0002"
+      ],
+      "inference": false
+    },
+    {
+      "checkId": "tls.hostname",
+      "findingId": null,
+      "group": "tls",
+      "outcome": "pass",
+      "severity": null,
+      "title": "Certificate matches the hostname",
+      "detail": "tls.checkServerIdentity accepts the certificate for this hostname.",
+      "evidenceIds": [
+        "ev-0002"
+      ],
+      "inference": false
+    },
+    {
+      "checkId": "tls.chain",
+      "findingId": null,
+      "group": "tls",
+      "outcome": "pass",
+      "severity": null,
+      "title": "Certificate chain validates",
+      "detail": "The chain builds to a trusted root.",
+      "evidenceIds": [
+        "ev-0002"
+      ],
+      "inference": false
+    },
+    {
+      "checkId": "tls.expiry",
+      "findingId": null,
+      "group": "tls",
+      "outcome": "pass",
+      "severity": null,
+      "title": "Certificate valid for 75 more day(s)",
+      "detail": "valid_to is Jan 11 22:30:03 2027 GMT.",
+      "evidenceIds": [
+        "ev-0002"
+      ],
+      "inference": false
+    },
+    {
+      "checkId": "cookies.none-set",
+      "findingId": null,
+      "group": "cookies",
+      "outcome": "pass",
+      "severity": null,
+      "title": "No cookies set by the landing response",
+      "detail": "The landing response carried no Set-Cookie header, so there are no cookie attributes to fault.",
+      "evidenceIds": [
+        "ev-0001"
+      ],
+      "inference": false
+    },
+    {
+      "checkId": "cors.probe",
+      "findingId": null,
+      "group": "cors",
+      "outcome": "not-assessed",
+      "severity": null,
+      "title": "CORS not probed under the restricted scan policy",
+      "detail": "Judging CORS requires sending a probe Origin header, which the restricted (unverified target) policy does not do.",
+      "evidenceIds": [],
+      "inference": false
+    },
+    {
+      "checkId": "exposed.git-head",
+      "findingId": null,
+      "group": "exposed",
+      "outcome": "pass",
+      "severity": null,
+      "title": "Git repository metadata not exposed (/.git/HEAD -> 404)",
+      "detail": "The path returns a not-found status.",
+      "evidenceIds": [
+        "ev-0004",
+        "ev-0003"
+      ],
+      "inference": false
+    },
+    {
+      "checkId": "exposed.env",
+      "findingId": null,
+      "group": "exposed",
+      "outcome": "pass",
+      "severity": null,
+      "title": "Environment file is access-controlled (/.env -> 403)",
+      "detail": "The path exists (the status reveals that much) but refuses unauthenticated access.",
+      "evidenceIds": [
+        "ev-0005",
+        "ev-0003"
+      ],
+      "inference": false
+    },
+    {
+      "checkId": "exposed.wp-admin",
+      "findingId": null,
+      "group": "exposed",
+      "outcome": "pass",
+      "severity": null,
+      "title": "WordPress admin is access-controlled (/wp-admin/ -> 403)",
+      "detail": "The path exists (the status reveals that much) but refuses unauthenticated access.",
+      "evidenceIds": [
+        "ev-0006",
+        "ev-0003"
+      ],
+      "inference": false
+    },
+    {
+      "checkId": "stack.none-detected",
+      "findingId": null,
+      "group": "stack",
+      "outcome": "pass",
+      "severity": null,
+      "title": "No tracked client libraries detected",
+      "detail": "Scanned 6 script asset(s) from the landing page; none matched a library in snapshot nvd-2026-10-28. Libraries loaded from third-party CDNs are detected by the same rules when reachable.",
+      "evidenceIds": [
+        "ev-0001",
+        "ev-0007"
+      ],
+      "inference": false
+    },
+    {
+      "checkId": "email.spf",
+      "findingId": null,
+      "group": "email",
+      "outcome": "pass",
+      "severity": null,
+      "title": "SPF present with a soft-fail (~all) default",
+      "detail": "Policy: v=spf1 include:spf.titan.email ~all",
+      "evidenceIds": [
+        "ev-0008"
+      ],
+      "inference": false
+    },
+    {
+      "checkId": "email.dmarc-p-none",
+      "findingId": "f-email-dmarc-p-none",
+      "group": "email",
+      "outcome": "finding",
+      "severity": "low",
+      "title": "DMARC policy is p=none (monitor only)",
+      "detail": "p=none collects reports but instructs receivers to deliver failing mail anyway; spoofing stays possible.",
+      "evidenceIds": [
+        "ev-0009"
+      ],
+      "inference": false
+    },
+    {
+      "checkId": "redirects.mixed-content",
+      "findingId": null,
+      "group": "redirects",
+      "outcome": "pass",
+      "severity": null,
+      "title": "No mixed content in the landing page asset list",
+      "detail": "No script/img/link/iframe subresource is loaded over http://.",
+      "evidenceIds": [
+        "ev-0010"
+      ],
+      "inference": false
+    },
+    {
+      "checkId": "redirects.https-upgrade",
+      "findingId": null,
+      "group": "redirects",
+      "outcome": "pass",
+      "severity": null,
+      "title": "HTTP redirects to HTTPS",
+      "detail": "The plain-HTTP origin answers 308 to https://nyktos.tech/.",
+      "evidenceIds": [
+        "ev-0011"
+      ],
+      "inference": false
+    },
+    {
+      "checkId": "redirects.open-redirect",
+      "findingId": null,
+      "group": "redirects",
+      "outcome": "not-assessed",
+      "severity": null,
+      "title": "Open-redirect probe not run under the restricted scan policy",
+      "detail": "The probe asks the site to redirect to a benign external URL; the restricted policy for unverified targets does not run it.",
+      "evidenceIds": [],
+      "inference": false
+    }
+  ],
+  "evidence": [
+    {
+      "id": "ev-0001",
+      "kind": "http-response",
+      "target": "https://nyktos.tech/",
+      "at": "2026-10-28T17:24:34.367Z",
+      "data": {
+        "status": 200,
+        "finalUrl": "https://nyktos.tech/",
+        "redirectCount": 0,
+        "headers": {
+          "content-type": "text/html; charset=utf-8",
+          "access-control-allow-origin": "*",
+          "content-security-policy": "default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://accounts.google.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.supabase.co; media-src 'self' blob: data:; font-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://accounts.google.com; frame-src 'self' https://accounts.google.com; frame-ancestors 'none'; form-action 'self'; base-uri 'self'; object-src 'none'",
+          "permissions-policy": "camera=(self), microphone=(self), geolocation=(), payment=()",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "server": "cloudflare",
+          "strict-transport-security": "max-age=63072000; includeSubDomains; preload",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY"
+        },
+        "headerNames": [
+          "access-control-allow-origin",
+          "age",
+          "alt-svc",
+          "cache-control",
+          "cf-cache-status",
+          "cf-ray",
+          "connection",
+          "content-disposition",
+          "content-security-policy",
+          "content-type",
+          "date",
+          "nel",
+          "permissions-policy",
+          "referrer-policy",
+          "report-to",
+          "server",
+          "strict-transport-security",
+          "transfer-encoding",
+          "vary",
+          "x-content-type-options",
+          "x-frame-options",
+          "x-matched-path",
+          "x-vercel-cache",
+          "x-vercel-id"
+        ],
+        "setCookies": [],
+        "bodyBytes": 34392,
+        "truncated": false
+      }
+    },
+    {
+      "id": "ev-0002",
+      "kind": "tls",
+      "target": "https://nyktos.tech/",
+      "at": "2026-10-28T17:24:35.745Z",
+      "data": {
+        "protocol": "TLSv1.3",
+        "authorized": true,
+        "authorizationError": null,
+        "hostnameMatch": true,
+        "remoteAddress": "104.21.26.144",
+        "cert": {
+          "subject": {
+            "CN": "nyktos.tech"
+          },
+          "issuer": {
+            "C": "US",
+            "O": "Let's Encrypt",
+            "CN": "YE2"
+          },
+          "validFrom": "Oct 13 22:30:04 2026 GMT",
+          "validTo": "Jan 11 22:30:03 2027 GMT",
+          "subjectAltName": "DNS:*.nyktos.tech, DNS:nyktos.tech",
+          "selfSigned": false,
+          "fingerprint256": "80:3C:E3:67:8E:CF:3C:6E:BA:7A:DC:17:8C:94:E8:2C:79:FC:57:FB:37:34:5D:12:F8:5B:D3:F6:C3:BF:01:A3"
+        }
+      }
+    },
+    {
+      "id": "ev-0003",
+      "kind": "http-response",
+      "target": "https://nyktos.tech/ac-nonexistent-27xk9ye4h3",
+      "at": "2026-10-28T17:24:40.051Z",
+      "data": {
+        "status": 403,
+        "finalUrl": "https://nyktos.tech/ac-nonexistent-27xk9ye4h3",
+        "redirectCount": 0,
+        "headers": {
+          "content-type": "text/html; charset=UTF-8",
+          "content-security-policy": "default-src 'none'; script-src 'nonce-G2vgwORg8H7Qne0KtHsnAM' 'unsafe-eval' https://challenges.cloudflare.com; script-src-attr 'none'; style-src 'unsafe-inline'; img-src 'self' https://challenges.cloudflare.com; connect-src 'self' https://challenges.cloudflare.com; frame-src 'self' https://challenges.cloudflare.com blob:; child-src 'self' https://challenges.cloudflare.com blob:; worker-src blob:; form-action http: https:; base-uri 'self'",
+          "server": "cloudflare",
+          "permissions-policy": "accelerometer=(),camera=(),clipboard-read=(),clipboard-write=(),geolocation=(),gyroscope=(),hid=(),magnetometer=(),microphone=(),payment=(),publickey-credentials-get=(),screen-wake-lock=(),serial=(),sync-xhr=(),usb=(),xr-spatial-tracking=*",
+          "referrer-policy": "same-origin",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "SAMEORIGIN"
+        },
+        "headerNames": [
+          "accept-ch",
+          "alt-svc",
+          "cf-mitigated",
+          "cf-ray",
+          "connection",
+          "content-length",
+          "content-security-policy",
+          "content-type",
+          "critical-ch",
+          "cross-origin-embedder-policy",
+          "cross-origin-opener-policy",
+          "cross-origin-resource-policy",
+          "date",
+          "nel",
+          "origin-agent-cluster",
+          "permissions-policy",
+          "referrer-policy",
+          "report-to",
+          "server",
+          "server-timing",
+          "x-content-type-options",
+          "x-frame-options"
+        ],
+        "setCookies": [],
+        "bodyBytes": 5573,
+        "truncated": false
+      }
+    },
+    {
+      "id": "ev-0004",
+      "kind": "http-response",
+      "target": "https://nyktos.tech/.git/HEAD",
+      "at": "2026-10-28T17:24:40.397Z",
+      "data": {
+        "status": 404,
+        "finalUrl": "https://nyktos.tech/.git/HEAD",
+        "redirectCount": 0,
+        "headers": {
+          "content-type": "text/html; charset=utf-8",
+          "access-control-allow-origin": "*",
+          "content-security-policy": "default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://accounts.google.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.supabase.co; media-src 'self' blob: data:; font-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://accounts.google.com; frame-src 'self' https://accounts.google.com; frame-ancestors 'none'; form-action 'self'; base-uri 'self'; object-src 'none'",
+          "permissions-policy": "camera=(self), microphone=(self), geolocation=(), payment=()",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "server": "cloudflare",
+          "strict-transport-security": "max-age=63072000; includeSubDomains; preload",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "DENY"
+        },
+        "headerNames": [
+          "access-control-allow-origin",
+          "age",
+          "alt-svc",
+          "cache-control",
+          "cf-cache-status",
+          "cf-ray",
+          "connection",
+          "content-disposition",
+          "content-security-policy",
+          "content-type",
+          "date",
+          "last-modified",
+          "nel",
+          "permissions-policy",
+          "referrer-policy",
+          "report-to",
+          "server",
+          "strict-transport-security",
+          "transfer-encoding",
+          "vary",
+          "x-content-type-options",
+          "x-frame-options",
+          "x-matched-path",
+          "x-next-error-status",
+          "x-vercel-cache",
+          "x-vercel-id"
+        ],
+        "setCookies": [],
+        "bodyBytes": 15694,
+        "truncated": false
+      }
+    },
+    {
+      "id": "ev-0005",
+      "kind": "http-response",
+      "target": "https://nyktos.tech/.env",
+      "at": "2026-10-28T17:24:40.764Z",
+      "data": {
+        "status": 403,
+        "finalUrl": "https://nyktos.tech/.env",
+        "redirectCount": 0,
+        "headers": {
+          "content-type": "text/html; charset=UTF-8",
+          "content-security-policy": "default-src 'none'; script-src 'nonce-m0SkNB6WT35u6NOswSXLJR' 'unsafe-eval' https://challenges.cloudflare.com; script-src-attr 'none'; style-src 'unsafe-inline'; img-src 'self' https://challenges.cloudflare.com; connect-src 'self' https://challenges.cloudflare.com; frame-src 'self' https://challenges.cloudflare.com blob:; child-src 'self' https://challenges.cloudflare.com blob:; worker-src blob:; form-action http: https:; base-uri 'self'",
+          "server": "cloudflare",
+          "permissions-policy": "accelerometer=(),camera=(),clipboard-read=(),clipboard-write=(),geolocation=(),gyroscope=(),hid=(),magnetometer=(),microphone=(),payment=(),publickey-credentials-get=(),screen-wake-lock=(),serial=(),sync-xhr=(),usb=(),xr-spatial-tracking=*",
+          "referrer-policy": "same-origin",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "SAMEORIGIN"
+        },
+        "headerNames": [
+          "accept-ch",
+          "alt-svc",
+          "cf-mitigated",
+          "cf-ray",
+          "connection",
+          "content-length",
+          "content-security-policy",
+          "content-type",
+          "critical-ch",
+          "cross-origin-embedder-policy",
+          "cross-origin-opener-policy",
+          "cross-origin-resource-policy",
+          "date",
+          "nel",
+          "origin-agent-cluster",
+          "permissions-policy",
+          "referrer-policy",
+          "report-to",
+          "server",
+          "server-timing",
+          "x-content-type-options",
+          "x-frame-options"
+        ],
+        "setCookies": [],
+        "bodyBytes": 5445,
+        "truncated": false
+      }
+    },
+    {
+      "id": "ev-0006",
+      "kind": "http-response",
+      "target": "https://nyktos.tech/wp-admin/",
+      "at": "2026-10-28T17:24:41.345Z",
+      "data": {
+        "status": 403,
+        "finalUrl": "https://nyktos.tech/wp-admin",
+        "redirectCount": 1,
+        "headers": {
+          "content-type": "text/html; charset=UTF-8",
+          "content-security-policy": "default-src 'none'; script-src 'nonce-Sy1MyxDBpjuOwb70R0KPqR' 'unsafe-eval' https://challenges.cloudflare.com; script-src-attr 'none'; style-src 'unsafe-inline'; img-src 'self' https://challenges.cloudflare.com; connect-src 'self' https://challenges.cloudflare.com; frame-src 'self' https://challenges.cloudflare.com blob:; child-src 'self' https://challenges.cloudflare.com blob:; worker-src blob:; form-action http: https:; base-uri 'self'",
+          "server": "cloudflare",
+          "permissions-policy": "accelerometer=(),camera=(),clipboard-read=(),clipboard-write=(),geolocation=(),gyroscope=(),hid=(),magnetometer=(),microphone=(),payment=(),publickey-credentials-get=(),screen-wake-lock=(),serial=(),sync-xhr=(),usb=(),xr-spatial-tracking=*",
+          "referrer-policy": "same-origin",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "SAMEORIGIN"
+        },
+        "headerNames": [
+          "accept-ch",
+          "alt-svc",
+          "cf-mitigated",
+          "cf-ray",
+          "connection",
+          "content-length",
+          "content-security-policy",
+          "content-security-policy-report-only",
+          "content-type",
+          "critical-ch",
+          "cross-origin-embedder-policy",
+          "cross-origin-opener-policy",
+          "cross-origin-resource-policy",
+          "date",
+          "nel",
+          "origin-agent-cluster",
+          "permissions-policy",
+          "referrer-policy",
+          "report-to",
+          "reporting-endpoints",
+          "server",
+          "server-timing",
+          "x-content-type-options",
+          "x-frame-options"
+        ],
+        "setCookies": [],
+        "bodyBytes": 5478,
+        "truncated": false
+      }
+    },
+    {
+      "id": "ev-0007",
+      "kind": "cve-snapshot",
+      "target": "https://nyktos.tech/",
+      "at": "2026-10-28T17:24:42.438Z",
+      "data": {
+        "snapshotVersion": "nvd-2026-10-28",
+        "source": "NVD API 2.0 (services.nvd.nist.gov), verified pull 2026-10-28",
+        "generatedAt": "2026-10-27T19:16:50Z"
+      }
+    },
+    {
+      "id": "ev-0008",
+      "kind": "dns",
+      "target": "nyktos.tech",
+      "at": "2026-10-28T17:24:45.900Z",
+      "data": {
+        "query": "nyktos.tech TXT",
+        "status": "ok",
+        "records": [
+          "v=spf1 include:spf.titan.email ~all"
+        ]
+      }
+    },
+    {
+      "id": "ev-0009",
+      "kind": "dns",
+      "target": "_dmarc.nyktos.tech",
+      "at": "2026-10-28T17:24:45.911Z",
+      "data": {
+        "query": "_dmarc.nyktos.tech TXT",
+        "status": "ok",
+        "records": [
+          "v=DMARC1; p=none; rua=mailto:a551b93bd1b24387969a15f88fd91e81@dmarc-reports.cloudflare.net"
+        ]
+      }
+    },
+    {
+      "id": "ev-0010",
+      "kind": "http-response",
+      "target": "https://nyktos.tech/",
+      "at": "2026-10-28T17:24:47.138Z",
+      "data": {
+        "status": 403,
+        "finalUrl": "https://nyktos.tech/",
+        "redirectCount": 0,
+        "headers": {
+          "content-type": "text/html; charset=UTF-8",
+          "content-security-policy": "default-src 'none'; script-src 'nonce-9MDkXCDfkcFaK6IB0cT1B0' 'unsafe-eval' https://challenges.cloudflare.com; script-src-attr 'none'; style-src 'unsafe-inline'; img-src 'self' https://challenges.cloudflare.com; connect-src 'self' https://challenges.cloudflare.com; frame-src 'self' https://challenges.cloudflare.com blob:; child-src 'self' https://challenges.cloudflare.com blob:; worker-src blob:; form-action http: https:; base-uri 'self'",
+          "server": "cloudflare",
+          "permissions-policy": "accelerometer=(),camera=(),clipboard-read=(),clipboard-write=(),geolocation=(),gyroscope=(),hid=(),magnetometer=(),microphone=(),payment=(),publickey-credentials-get=(),screen-wake-lock=(),serial=(),sync-xhr=(),usb=(),xr-spatial-tracking=*",
+          "referrer-policy": "same-origin",
+          "x-content-type-options": "nosniff",
+          "x-frame-options": "SAMEORIGIN"
+        },
+        "headerNames": [
+          "accept-ch",
+          "alt-svc",
+          "cf-mitigated",
+          "cf-ray",
+          "connection",
+          "content-length",
+          "content-security-policy",
+          "content-type",
+          "critical-ch",
+          "cross-origin-embedder-policy",
+          "cross-origin-opener-policy",
+          "cross-origin-resource-policy",
+          "date",
+          "nel",
+          "origin-agent-cluster",
+          "permissions-policy",
+          "referrer-policy",
+          "report-to",
+          "server",
+          "server-timing",
+          "x-content-type-options",
+          "x-frame-options"
+        ],
+        "setCookies": [],
+        "bodyBytes": 5455,
+        "truncated": false
+      }
+    },
+    {
+      "id": "ev-0011",
+      "kind": "http-response",
+      "target": "http://nyktos.tech/",
+      "at": "2026-10-28T17:24:47.227Z",
+      "data": {
+        "status": 308,
+        "finalUrl": "http://nyktos.tech/",
+        "redirectCount": 0,
+        "headers": {
+          "content-type": "text/plain",
+          "location": "https://nyktos.tech/",
+          "server": "cloudflare"
+        },
+        "headerNames": [
+          "alt-svc",
+          "cf-cache-status",
+          "cf-ray",
+          "connection",
+          "content-type",
+          "date",
+          "location",
+          "nel",
+          "refresh",
+          "report-to",
+          "server",
+          "transfer-encoding"
+        ],
+        "setCookies": [],
+        "bodyBytes": 14,
+        "truncated": false
+      }
+    }
+  ],
+  "findings": [
+    {
+      "checkId": "headers.csp-unsafe-inline",
+      "findingId": "f-headers-csp-unsafe-inline",
+      "group": "headers",
+      "outcome": "finding",
+      "severity": "medium",
+      "title": "CSP weakness: script-src allows 'unsafe-inline'",
+      "detail": "The Content-Security-Policy was parsed per directive: script-src allows 'unsafe-inline'. Full policy in the linked evidence.",
+      "evidenceIds": [
+        "ev-0001"
+      ],
+      "inference": false
+    },
+    {
+      "checkId": "email.dmarc-p-none",
+      "findingId": "f-email-dmarc-p-none",
+      "group": "email",
+      "outcome": "finding",
+      "severity": "low",
+      "title": "DMARC policy is p=none (monitor only)",
+      "detail": "p=none collects reports but instructs receivers to deliver failing mail anyway; spoofing stays possible.",
+      "evidenceIds": [
+        "ev-0009"
+      ],
+      "inference": false
+    }
+  ],
+  "fixFirst": [
+    {
+      "findingId": "f-headers-csp-unsafe-inline",
+      "severity": "medium",
+      "weight": 15,
+      "title": "CSP weakness: script-src allows 'unsafe-inline'"
+    },
+    {
+      "findingId": "f-email-dmarc-p-none",
+      "severity": "low",
+      "weight": 5,
+      "title": "DMARC policy is p=none (monitor only)"
+    }
+  ],
+  "integrity": {
+    "unresolvedEvidenceIds": [],
+    "ok": true
+  },
+  "stamp": {
+    "scannerVersion": "0.1.0",
+    "rulesVersion": "1.0.0",
+    "modelId": "none (engine-only)",
+    "modelConfigured": false,
+    "timestamp": "2026-10-28T17:24:48.396Z",
+    "target": "https://nyktos.tech/",
+    "scanPolicy": "restricted",
+    "dataSnapshots": {
+      "cve": {
+        "snapshotVersion": "nvd-2026-10-28",
+        "source": "NVD API 2.0 (services.nvd.nist.gov), verified pull 2026-10-28",
+        "generatedAt": "2026-10-27T19:16:50Z",
+        "stale": false
+      }
+    }
+  },
+  "auditLog": [
+    {
+      "at": "2026-10-28T17:24:33.507Z",
+      "event": "scan-created",
+      "target": "https://nyktos.tech/",
+      "authorizationState": "attested",
+      "verification": null,
+      "scanPolicy": "restricted",
+      "ip": "87.81.238.6",
+      "flow": "stateless"
+    },
+    {
+      "at": "2026-10-28T17:24:48.396Z",
+      "event": "scan-complete",
+      "target": "https://nyktos.tech/",
+      "flow": "stateless"
+    },
+    {
+      "at": "2026-10-28T17:24:48.396Z",
+      "event": "report-finalized",
+      "auditorStatus": "engine-only",
+      "chainsRendered": 0,
+      "chainsUnproven": 0,
+      "refutationStatus": "ok"
+    }
+  ],
+  "verification": null,
+  "chains": {
+    "status": "not-run",
+    "reason": "Chain derivation is part of the Muse Spark auditor pass, which is not configured (META_API_KEY / META_MODEL_ID unset). No chains are shown; the engine never fabricates them.",
+    "chains": [],
+    "unproven": [],
+    "invalid": []
+  },
+  "refutation": {
+    "status": "ok",
+    "reason": "No findings in refutation scope (high severity, or nodes of a Supported chain).",
+    "entries": []
+  },
+  "auditor": {
+    "status": "engine-only",
+    "modelId": null,
+    "reason": "META_API_KEY / META_MODEL_ID are not set; this is the deterministic engine-only report. Auditor reasoning, chains, and refutation are shown as not run, never simulated.",
+    "calls": [],
+    "callCap": 3
+  }
+}
