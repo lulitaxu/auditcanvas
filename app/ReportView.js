@@ -116,7 +116,12 @@ function Graph({ report }) {
       </div>
       <div className="graph-layers">
         {['Assets', 'Observations', 'Findings', 'Fixes'].map((l, i) => (
-          <span key={l} style={{ left: COL_X(i) }}>{l}</span>
+          // Percentage of the SVG viewBox width, not a fixed px offset:
+          // a px left at the last column (768px) used to stretch the
+          // page's scrollable overflow area on phones and squeeze the
+          // whole layout. Percentages track the scaled columns and can
+          // never overflow the container.
+          <span key={l} style={{ left: `${(COL_X(i) / width) * 100}%` }}>{l}</span>
         ))}
       </div>
     </div>

@@ -31,7 +31,7 @@ main { max-width: 880px; margin: 0 auto; padding: 40px 20px 80px; }
 .wordmark span { color: var(--accent); }
 .masthead h1 {
   font-family: Georgia, "Times New Roman", serif;
-  font-size: 44px; line-height: 1.12; font-weight: 700; margin: 14px 0 10px;
+  font-size: clamp(30px, 9.5vw, 44px); line-height: 1.12; font-weight: 700; margin: 14px 0 10px;
 }
 .masthead p { max-width: 62ch; color: var(--muted); margin: 0 0 20px; }
 
@@ -44,7 +44,7 @@ main { max-width: 880px; margin: 0 auto; padding: 40px 20px 80px; }
 .btn-row { display: flex; gap: 12px; flex-wrap: wrap; }
 
 section.block { border-top: 1px solid var(--line); padding: 26px 0; }
-section.block h2 { font-family: Georgia, serif; font-size: 24px; margin: 0 0 8px; }
+section.block h2 { font-family: Georgia, serif; font-size: 24px; margin: 0 0 8px; overflow-wrap: anywhere; }
 section.block .lede { color: var(--muted); max-width: 66ch; margin: 0 0 16px; }
 
 form.scan { display: flex; flex-direction: column; gap: 12px; }
@@ -84,8 +84,8 @@ label.attest input { margin-top: 4px; }
 .chip.not-assessed { color: var(--notassessed); }
 .sev { font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--accent); }
 .result-title { font-weight: 600; }
-.result-detail { color: var(--muted); font-size: 14.5px; margin-top: 3px; max-width: 72ch; }
-.evids { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; color: var(--muted); margin-top: 4px; }
+.result-detail { color: var(--muted); font-size: 14.5px; margin-top: 3px; max-width: 72ch; overflow-wrap: break-word; }
+.evids { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; color: var(--muted); margin-top: 4px; overflow-wrap: anywhere; }
 
 .scores { display: flex; gap: 0; border: 2px solid var(--ink); background: #fffdf8; margin: 18px 0; flex-wrap: wrap; }
 .score { flex: 1 1 180px; padding: 14px 18px; border-right: 1px solid var(--line); }
@@ -94,8 +94,8 @@ label.attest input { margin-top: 4px; }
 .score .v { font-family: Georgia, serif; font-size: 34px; font-weight: 700; line-height: 1.15; }
 .score .n { font-size: 13px; color: var(--muted); }
 
-.stamp { font-size: 13.5px; color: var(--muted); border: 1px solid var(--line); background: var(--paper-2); padding: 12px 16px; }
-.stamp code { font-family: ui-monospace, Menlo, monospace; font-size: 12.5px; color: var(--ink); }
+.stamp { font-size: 13.5px; color: var(--muted); border: 1px solid var(--line); background: var(--paper-2); padding: 12px 16px; overflow-wrap: break-word; }
+.stamp code { font-family: ui-monospace, Menlo, monospace; font-size: 12.5px; color: var(--ink); overflow-wrap: anywhere; }
 
 ol.fixfirst { margin: 8px 0 0; padding-left: 22px; }
 ol.fixfirst li { padding: 4px 0; }
@@ -164,5 +164,25 @@ svg.graph .edge.chain-conditional { stroke: var(--inconclusive); stroke-width: 2
 .graph-legend { display: flex; gap: 22px; flex-wrap: wrap; font-size: 13px; color: var(--muted); margin: 4px 0 2px; }
 .graph-legend .swatch { display: inline-block; width: 26px; border-top: 3px solid var(--accent); vertical-align: middle; margin-right: 6px; }
 .graph-legend .swatch.dashed { border-top: 3px dashed var(--inconclusive); }
-.graph-layers { position: relative; height: 18px; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+.graph-layers { position: relative; height: 18px; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); font-weight: 700; overflow: hidden; }
 .graph-layers span { position: absolute; }
+
+/* --- Small screens: keep the editorial layout, lose the squeeze ---
+   Desktop above ~560px is untouched by everything below. */
+@media (max-width: 560px) {
+  main { padding: 28px 16px 60px; }
+  section.block { padding: 22px 0; }
+  section.block h2 { font-size: 21px; }
+  .btn, .mode-toggle > button { min-height: 44px; }
+  .dl-row .btn { min-height: 44px; padding: 10px 12px; }
+  .dl-row { margin-left: 0; }
+  .groups li { gap: 12px; }
+  .groups li > span:first-child { min-width: 0; overflow-wrap: break-word; }
+  .gstatus { text-align: right; }
+  .score { flex-basis: 100%; border-right: none; border-bottom: 1px solid var(--line); }
+  .score:last-child { border-bottom: none; }
+  .refute dl { grid-template-columns: 1fr; gap: 2px 0; }
+  .refute dd { margin-bottom: 8px; }
+  .verify { padding: 14px; }
+  .chain-card, .refute { padding: 12px; }
+}
