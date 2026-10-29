@@ -17,6 +17,7 @@ export default function RootLayout({ children }) {
           href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@500;600;700&display=swap"
           rel="stylesheet"
         />
+        <script defer src="/_vercel/insights/script.js"></script>
       </head>
       <body>{children}</body>
     </html>
