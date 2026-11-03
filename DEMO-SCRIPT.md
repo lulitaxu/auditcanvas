@@ -1,5 +1,20 @@
 # AuditCanvas — demo video run-of-show (3:00)
 
+> **FALLBACK RECORDING ADDENDUM (Nov 3, 2026 — read first).** The Meta
+> account restriction never cleared, so per the founder's fork decision
+> the demo is recorded on the **Gemini fallback**: the deployed app
+> runs the identical auditor contract on Gemini
+> (`gemini-3.5-flash-lite`), and every report stamp says so on screen.
+> Changes to the checklist below: (1) the "Key in env" item is already
+> satisfied on the deployment — verify instead by running one Judge
+> demo scan in rehearsal and confirming the report's stamp reads
+> provider `gemini` and the auditor status is annotated, not
+> `engine-only`; (2) in narration, say "the auditor" or "the model"
+> (the script already does) and never name Muse Spark as the model
+> running on screen; if the stamp is visible while narrating segment
+> 0, the honest line is "the auditor" throughout. Everything else in
+> the script stands.
+
 _Recording script for the required hackathon demo video. Built around
 the Judge-mode line: **"See the auditor reason, not just scan."**
 Total runtime 3:00. One narrator, screen capture of the deployed app
@@ -20,7 +35,7 @@ footage, per the spec, and is labelled as such if used.
 
 Do all of these, in order, before the first take:
 
-- [ ] **Fixtures green.** `npm run verify` prints **73/73 assertions
+- [ ] **Fixtures green.** `npm run verify` prints **156/156 assertions
   passed** on the exact build being recorded. (Must also be green
   again on submission day.)
 - [ ] **Key in env.** `META_API_KEY` and `META_MODEL_ID` are set in

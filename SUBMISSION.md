@@ -1,11 +1,12 @@
 # AuditCanvas — cerebralvalley.ai submission draft
 
 _Draft prepared Oct 28, 2026 for the Meta Global AI Developer Hackathon
-submission form. Copy each field into the form; the two bracketed
-placeholders are filled in last, in the order noted at the bottom.
-Everything claimed below is limited to what is built and verified in
-the repo; the one pending verification is stated openly in the
-description and in the honesty notes at the end._
+submission form, revised Nov 3, 2026 for the fallback submission.
+Copy each field into the form; the one remaining bracketed placeholder
+(demo video) is filled in last, as noted at the bottom. Everything
+claimed below is limited to what is built and verified in the repo;
+the provider situation is stated openly in the auditor section and in
+the honesty notes at the end._
 
 ---
 
@@ -20,14 +21,14 @@ Push the Frontier
 ## One-liner
 
 AuditCanvas turns real security evidence into verified, understandable
-remediation: a deterministic scanner gathers the evidence, and Muse
-Spark reasons over it — explaining impact, building evidence-checked
+remediation: a deterministic scanner gathers the evidence, and an AI
+auditor reasons over it — explaining impact, building evidence-checked
 attack chains, and arguing against its own findings before anything is
 presented as settled.
 
 ## Live demo URL
 
-[AFTER DEPLOY]
+https://auditcanvas.vercel.app
 
 ## Demo video
 
@@ -103,14 +104,30 @@ version, and model ID. Reports export as `auditcanvas-evidence.json`
 carrying its finding ID, evidence IDs, applicable stack, conditions,
 and placement).
 
-### How Muse Spark is used
+### How the AI auditor is used (and which model runs it)
 
 The scanner decides what exists; the model decides what it means. The
 model may explain, rank, and dispute severity. It may never create,
 delete, or silently downgrade a finding, and it never touches the
 scores.
 
-Muse Spark is used in at most **three bounded calls per scan** — no
+**Which model:** this auditor layer was designed and built for Muse
+Spark on the Meta Model API, and Muse Spark remains the intended
+provider. During the hackathon window, however, the project's Meta
+account was restricted over a failed payment-method authorization
+hold, so no Meta API key could be issued and no Muse Spark call could
+be made. The auditor contract is provider-agnostic by construction —
+the same prompts, output schemas, report validator, chain classifier,
+and refutation assessment sit in front of a server-side provider
+switch (`AUDITOR_PROVIDER`) — so the live demo runs the identical
+auditor on **Gemini (model `gemini-3.5-flash-lite`)**, verified live
+on Nov 3, 2026 with both model passes completing (auditor status
+"annotated"). Every report's reproducibility stamp names the provider
+and model that actually produced it, so nothing about this is hidden
+in the output. Switching the deployment back to Muse Spark is an
+environment change, not a code change.
+
+The auditor is used in at most **three bounded calls per scan** — no
 agent loops, strict output schemas, fixed evidence inputs, a timeout
 with one retry, and a per-scan cost cap:
 
@@ -166,11 +183,11 @@ committed before the code:
   the Exposure group (founder-approved addendum, SPEC.md 2026-10-29), with
   a fixture suite (vulnerable, hardened, slow/timeout, and garbage
   origins) that the scanner's verdicts are asserted against:
-  **73/73 assertions green**, including zero findings on the hardened
+  **156/156 assertions green**, including zero findings on the hardened
   fixture and Inconclusive — never Pass — on malformed and hanging
   targets.
 - The five-stage pipeline: deterministic scanner → evidence validator
-  → Muse Spark auditor → report validator → report, with the
+  → AI auditor → report validator → report, with the
   stepwise scan architecture (one short API step per check group) so
   scans survive serverless timeouts.
 - Exploit-chain validation and classification, the refutation pass
@@ -190,9 +207,13 @@ committed before the code:
 
 Next.js 16 (App Router) and React 19, plain JavaScript, Node.js
 runtime, zero runtime dependencies beyond Next/React. Deterministic
-scanner and scoring in `src/lib/`; Muse Spark via the Meta Model API
-(`https://api.meta.ai/v1`, model ID read from environment, never
-assumed in code). CVE data: versioned snapshot from the NVD API 2.0.
+scanner and scoring in `src/lib/`; the auditor model sits behind a
+server-side provider switch — built for Muse Spark via the Meta
+Model API (`https://api.meta.ai/v1`, model ID read from environment,
+never assumed in code), with the live deployment running the Gemini
+fallback (`gemini-3.5-flash-lite`) for the reason stated in the
+auditor section above. CVE data: versioned snapshot from the NVD
+API 2.0.
 Dependency-free ZIP writer for the fix pack.
 
 ### Honesty notes (what is NOT claimed)
@@ -200,27 +221,34 @@ Dependency-free ZIP writer for the fix pack.
 - The auditor layer — all three call sites, the report validator, the
   chain classifier, the refutation assessment, and the engine-only
   fallback — is built and wired, and its non-model logic is exercised
-  by the fixture suite. **Live-model verification is pending**: the
-  exact model ID and structured-output support on the project account
-  are confirmed with the first real auditor call once the key is in
-  the deployment environment, and until then reports carry the
-  explicit engine-only status. The demo was not recorded against a
-  mocked model.
-- Preloaded sample reports are generated by real scans from the
-  deployed app (`scripts/generate-samples.mjs`); the Judge-mode slot
-  ships with an explicit placeholder until that post-deploy run,
-  because the build sandbox's network intercepts the scanner's direct
-  connections. No sample report in this project is hand-assembled.
+  by the fixture suite (156/156 assertions green on Nov 3, 2026).
+  **Live-model verification is complete on the fallback provider**:
+  on Nov 3, 2026 the deployed app produced fully annotated reports
+  (auditor pass and refutation pass both ok) stamped provider
+  `gemini`, model `gemini-3.5-flash-lite`. **Muse Spark verification
+  remains pending** for the reason stated in the auditor section: the
+  Meta account restriction is on the founder's side with Meta and
+  could not be cleared inside the window. The demo was not recorded
+  against a mocked model.
+- Preloaded sample reports are real scans of our own sites
+  (nyktos.tech, cliphaus.dev) produced by the deployed app itself and
+  saved with their reproducibility stamps; the samples now live in
+  Judge mode show the same Gemini fallback stamp as the live demo.
+  No sample report in this project is hand-assembled.
 
 ---
 
 ## Fill-in order at submission time
 
-1. Deploy → paste the live URL into **[AFTER DEPLOY]** above, run
-   `scripts/generate-samples.mjs` from the deployed environment, and
-   re-check the sample labels/timestamps in Judge mode.
+1. ~~Deploy → paste the live URL~~ DONE Nov 3, 2026:
+   https://auditcanvas.vercel.app is live, and the Judge-mode samples
+   were regenerated through the deployed app the same day (Gemini
+   fallback stamp, auditor annotated).
 2. Record the demo video from `DEMO-SCRIPT.md` (pre-recording
-   checklist first) → paste the link into **[AFTER RECORDING]**.
-3. Confirm the first live auditor call has run on the deployed key; if
-   it has, the honesty note above can be updated before submitting —
-   if it has not, submit with the note as written.
+   checklist first, with the fallback addendum at the top) → paste
+   the link into **[AFTER RECORDING]**.
+3. The first live auditor call has run on the deployed fallback key
+   (Nov 3, 2026); the honesty notes above already reflect that. If the
+   Meta restriction clears before the deadline and a Muse Spark scan
+   verifies, update the auditor section before submitting — otherwise
+   submit with the text as written.
