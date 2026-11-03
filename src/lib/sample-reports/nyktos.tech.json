@@ -1,13 +1,15 @@
 {
   "schemaVersion": 1,
-  "scanId": "ioQ6GCOANZVmFZ0_AGSbMqMI",
+  "scanId": "aK-ZeHrwuvEmz9_quayaU3us",
   "rescanOf": null,
   "target": "https://nyktos.tech/",
+  "origin": "public",
+  "provenance": "server",
   "authorizationState": "attested",
   "scanPolicy": "restricted",
   "status": "complete",
-  "startedAt": "2026-10-28T21:49:40.146Z",
-  "updatedAt": "2026-10-28T21:49:46.538Z",
+  "startedAt": "2026-11-03T03:29:00.223Z",
+  "updatedAt": "2026-11-03T03:29:03.359Z",
   "groupStatus": {
     "headers": "done",
     "tls": "done",
@@ -186,7 +188,7 @@
       "group": "tls",
       "outcome": "pass",
       "severity": null,
-      "title": "Certificate valid for 75 more day(s)",
+      "title": "Certificate valid for 69 more day(s)",
       "detail": "valid_to is Jan 11 22:30:03 2027 GMT.",
       "evidenceIds": [
         "ev-0002"
@@ -322,7 +324,7 @@
       "outcome": "pass",
       "severity": null,
       "title": "No known secret patterns in first-party JavaScript",
-      "detail": "No known secret patterns in 4 scanned first-party assets (331948 bytes). Patterns are anchored formats (AWS, Stripe, GitHub, Supabase service-role, Slack, private-key blocks); this does not prove the absence of every possible credential.",
+      "detail": "No known secret patterns in 4 scanned first-party assets (332156 bytes). Patterns are anchored formats (AWS, Stripe, GitHub, Supabase service-role, Slack, private-key blocks); this does not prove the absence of every possible credential.",
       "evidenceIds": [
         "ev-0012",
         "ev-0013",
@@ -373,9 +375,9 @@
       "outcome": "pass",
       "severity": null,
       "title": "No tracked client libraries detected",
-      "detail": "Scanned 0 script asset(s) from the landing page; none matched a library in snapshot nvd-2026-10-28. Libraries loaded from third-party CDNs are detected by the same rules when reachable.",
+      "detail": "Scanned 6 script asset(s) from the landing page; none matched a library in snapshot nvd-2026-10-28. Libraries loaded from third-party CDNs are detected by the same rules when reachable.",
       "evidenceIds": [
-        "ev-0017",
+        "ev-0001",
         "ev-0016"
       ],
       "inference": false
@@ -389,7 +391,7 @@
       "title": "SPF present with a soft-fail (~all) default",
       "detail": "Policy: v=spf1 include:spf.titan.email ~all",
       "evidenceIds": [
-        "ev-0018"
+        "ev-0017"
       ],
       "inference": false
     },
@@ -402,7 +404,7 @@
       "title": "DMARC policy is p=none (monitor only)",
       "detail": "p=none collects reports but instructs receivers to deliver failing mail anyway; spoofing stays possible.",
       "evidenceIds": [
-        "ev-0019"
+        "ev-0018"
       ],
       "inference": false
     },
@@ -415,7 +417,7 @@
       "title": "No mixed content in the landing page asset list",
       "detail": "No script/img/link/iframe subresource is loaded over http://.",
       "evidenceIds": [
-        "ev-0020"
+        "ev-0019"
       ],
       "inference": false
     },
@@ -428,7 +430,7 @@
       "title": "HTTP redirects to HTTPS",
       "detail": "The plain-HTTP origin answers 308 to https://nyktos.tech/.",
       "evidenceIds": [
-        "ev-0021"
+        "ev-0020"
       ],
       "inference": false
     },
@@ -449,7 +451,7 @@
       "id": "ev-0001",
       "kind": "http-response",
       "target": "https://nyktos.tech/",
-      "at": "2026-10-28T21:49:41.626Z",
+      "at": "2026-11-03T03:29:00.685Z",
       "data": {
         "status": 200,
         "finalUrl": "https://nyktos.tech/",
@@ -492,7 +494,7 @@
           "x-vercel-id"
         ],
         "setCookies": [],
-        "bodyBytes": 34392,
+        "bodyBytes": 34600,
         "truncated": false
       }
     },
@@ -500,7 +502,7 @@
       "id": "ev-0002",
       "kind": "tls",
       "target": "https://nyktos.tech/",
-      "at": "2026-10-28T21:49:42.158Z",
+      "at": "2026-11-03T03:29:00.917Z",
       "data": {
         "protocol": "TLSv1.3",
         "authorized": true,
@@ -527,11 +529,11 @@
     {
       "id": "ev-0003",
       "kind": "http-response",
-      "target": "https://nyktos.tech/ac-nonexistent-fds2ocxvw9",
-      "at": "2026-10-28T21:49:43.651Z",
+      "target": "https://nyktos.tech/ac-nonexistent-s7o8zzor0w",
+      "at": "2026-11-03T03:29:01.583Z",
       "data": {
         "status": 404,
-        "finalUrl": "https://nyktos.tech/ac-nonexistent-fds2ocxvw9",
+        "finalUrl": "https://nyktos.tech/ac-nonexistent-s7o8zzor0w",
         "redirectCount": 0,
         "headers": {
           "content-type": "text/html; charset=utf-8",
@@ -581,7 +583,7 @@
       "id": "ev-0004",
       "kind": "http-response",
       "target": "https://nyktos.tech/.git/HEAD",
-      "at": "2026-10-28T21:49:43.765Z",
+      "at": "2026-11-03T03:29:01.646Z",
       "data": {
         "status": 404,
         "finalUrl": "https://nyktos.tech/.git/HEAD",
@@ -634,7 +636,7 @@
       "id": "ev-0005",
       "kind": "http-response",
       "target": "https://nyktos.tech/.env",
-      "at": "2026-10-28T21:49:43.987Z",
+      "at": "2026-11-03T03:29:01.690Z",
       "data": {
         "status": 404,
         "finalUrl": "https://nyktos.tech/.env",
@@ -687,7 +689,7 @@
       "id": "ev-0006",
       "kind": "http-response",
       "target": "https://nyktos.tech/wp-admin/",
-      "at": "2026-10-28T21:49:44.207Z",
+      "at": "2026-11-03T03:29:01.780Z",
       "data": {
         "status": 403,
         "finalUrl": "https://nyktos.tech/wp-admin",
@@ -719,11 +721,11 @@
     {
       "id": "ev-0007",
       "kind": "http-response",
-      "target": "https://nyktos.tech/ac-nonexistent-m8gveetocs",
-      "at": "2026-10-28T21:49:44.584Z",
+      "target": "https://nyktos.tech/ac-nonexistent-bvsnv4f2na",
+      "at": "2026-11-03T03:29:02.079Z",
       "data": {
         "status": 404,
-        "finalUrl": "https://nyktos.tech/ac-nonexistent-m8gveetocs",
+        "finalUrl": "https://nyktos.tech/ac-nonexistent-bvsnv4f2na",
         "redirectCount": 0,
         "headers": {
           "content-type": "text/html; charset=utf-8",
@@ -773,7 +775,7 @@
       "id": "ev-0008",
       "kind": "http-response",
       "target": "https://nyktos.tech/.env.local",
-      "at": "2026-10-28T21:49:44.688Z",
+      "at": "2026-11-03T03:29:02.121Z",
       "data": {
         "status": 404,
         "finalUrl": "https://nyktos.tech/.env.local",
@@ -826,7 +828,7 @@
       "id": "ev-0009",
       "kind": "http-response",
       "target": "https://nyktos.tech/.env.production",
-      "at": "2026-10-28T21:49:44.825Z",
+      "at": "2026-11-03T03:29:02.166Z",
       "data": {
         "status": 404,
         "finalUrl": "https://nyktos.tech/.env.production",
@@ -879,7 +881,7 @@
       "id": "ev-0010",
       "kind": "http-response",
       "target": "https://nyktos.tech/.env.bak",
-      "at": "2026-10-28T21:49:44.941Z",
+      "at": "2026-11-03T03:29:02.234Z",
       "data": {
         "status": 404,
         "finalUrl": "https://nyktos.tech/.env.bak",
@@ -932,7 +934,7 @@
       "id": "ev-0011",
       "kind": "http-response",
       "target": "https://nyktos.tech/.git/config",
-      "at": "2026-10-28T21:49:45.052Z",
+      "at": "2026-11-03T03:29:02.275Z",
       "data": {
         "status": 404,
         "finalUrl": "https://nyktos.tech/.git/config",
@@ -985,12 +987,12 @@
       "id": "ev-0012",
       "kind": "content-scan",
       "target": "https://nyktos.tech/",
-      "at": "2026-10-28T21:49:45.548Z",
+      "at": "2026-11-03T03:29:02.357Z",
       "data": {
         "asset": "(inline root document)",
         "inline": true,
-        "bytesFetched": 34289,
-        "bytesTotal": 34392,
+        "bytesFetched": 34497,
+        "bytesTotal": 34600,
         "truncated": false
       }
     },
@@ -998,7 +1000,7 @@
       "id": "ev-0013",
       "kind": "content-scan",
       "target": "https://nyktos.tech/_next/static/chunks/fd9d1056-42f38cc8ad733ab8.js",
-      "at": "2026-10-28T21:49:45.548Z",
+      "at": "2026-11-03T03:29:02.357Z",
       "data": {
         "asset": "https://nyktos.tech/_next/static/chunks/fd9d1056-42f38cc8ad733ab8.js",
         "inline": false,
@@ -1011,7 +1013,7 @@
       "id": "ev-0014",
       "kind": "content-scan",
       "target": "https://nyktos.tech/_next/static/chunks/117-620302b454086ac6.js",
-      "at": "2026-10-28T21:49:45.548Z",
+      "at": "2026-11-03T03:29:02.357Z",
       "data": {
         "asset": "https://nyktos.tech/_next/static/chunks/117-620302b454086ac6.js",
         "inline": false,
@@ -1024,7 +1026,7 @@
       "id": "ev-0015",
       "kind": "content-scan",
       "target": "https://nyktos.tech/_next/static/chunks/main-app-2dcde4753ea0d175.js",
-      "at": "2026-10-28T21:49:45.548Z",
+      "at": "2026-11-03T03:29:02.357Z",
       "data": {
         "asset": "https://nyktos.tech/_next/static/chunks/main-app-2dcde4753ea0d175.js",
         "inline": false,
@@ -1037,7 +1039,7 @@
       "id": "ev-0016",
       "kind": "cve-snapshot",
       "target": "https://nyktos.tech/",
-      "at": "2026-10-28T21:49:45.663Z",
+      "at": "2026-11-03T03:29:02.508Z",
       "data": {
         "snapshotVersion": "nvd-2026-10-28",
         "source": "NVD API 2.0 (services.nvd.nist.gov), verified pull 2026-10-28",
@@ -1046,44 +1048,9 @@
     },
     {
       "id": "ev-0017",
-      "kind": "http-response",
-      "target": "https://nyktos.tech/",
-      "at": "2026-10-28T21:49:45.759Z",
-      "data": {
-        "status": 403,
-        "finalUrl": "https://nyktos.tech/",
-        "redirectCount": 0,
-        "headers": {
-          "content-type": "text/html; charset=utf-8",
-          "server": "cloudflare"
-        },
-        "headerNames": [
-          "alt-svc",
-          "cache-control",
-          "cf-cache-status",
-          "cf-ray",
-          "connection",
-          "content-type",
-          "date",
-          "nel",
-          "report-to",
-          "retry-after",
-          "server",
-          "transfer-encoding",
-          "x-vercel-challenge-token",
-          "x-vercel-id",
-          "x-vercel-mitigated"
-        ],
-        "setCookies": [],
-        "bodyBytes": 35198,
-        "truncated": false
-      }
-    },
-    {
-      "id": "ev-0018",
       "kind": "dns",
       "target": "nyktos.tech",
-      "at": "2026-10-28T21:49:45.932Z",
+      "at": "2026-11-03T03:29:02.870Z",
       "data": {
         "query": "nyktos.tech TXT",
         "status": "ok",
@@ -1093,10 +1060,10 @@
       }
     },
     {
-      "id": "ev-0019",
+      "id": "ev-0018",
       "kind": "dns",
       "target": "_dmarc.nyktos.tech",
-      "at": "2026-10-28T21:49:45.958Z",
+      "at": "2026-11-03T03:29:02.889Z",
       "data": {
         "query": "_dmarc.nyktos.tech TXT",
         "status": "ok",
@@ -1106,10 +1073,10 @@
       }
     },
     {
-      "id": "ev-0020",
+      "id": "ev-0019",
       "kind": "http-response",
       "target": "https://nyktos.tech/",
-      "at": "2026-10-28T21:49:46.161Z",
+      "at": "2026-11-03T03:29:03.043Z",
       "data": {
         "status": 403,
         "finalUrl": "https://nyktos.tech/",
@@ -1131,20 +1098,21 @@
           "retry-after",
           "server",
           "transfer-encoding",
+          "vary",
           "x-vercel-challenge-token",
           "x-vercel-id",
           "x-vercel-mitigated"
         ],
         "setCookies": [],
-        "bodyBytes": 35199,
+        "bodyBytes": 41817,
         "truncated": false
       }
     },
     {
-      "id": "ev-0021",
+      "id": "ev-0020",
       "kind": "http-response",
       "target": "http://nyktos.tech/",
-      "at": "2026-10-28T21:49:46.323Z",
+      "at": "2026-11-03T03:29:03.117Z",
       "data": {
         "status": 308,
         "finalUrl": "http://nyktos.tech/",
@@ -1197,7 +1165,7 @@
       "title": "DMARC policy is p=none (monitor only)",
       "detail": "p=none collects reports but instructs receivers to deliver failing mail anyway; spoofing stays possible.",
       "evidenceIds": [
-        "ev-0019"
+        "ev-0018"
       ],
       "inference": false
     }
@@ -1223,11 +1191,13 @@
   "stamp": {
     "scannerVersion": "0.1.0",
     "rulesVersion": "1.1.0",
-    "provider": "meta",
-    "modelId": "none (engine-only)",
-    "modelConfigured": false,
-    "timestamp": "2026-10-28T21:49:46.539Z",
+    "provider": "gemini",
+    "modelId": "gemini-3.5-flash-lite",
+    "modelConfigured": true,
+    "timestamp": "2026-11-03T03:29:03.361Z",
     "target": "https://nyktos.tech/",
+    "origin": "public",
+    "authorizationState": "attested",
     "scanPolicy": "restricted",
     "dataSnapshots": {
       "cve": {
@@ -1240,25 +1210,25 @@
   },
   "auditLog": [
     {
-      "at": "2026-10-28T21:49:40.146Z",
+      "at": "2026-11-03T03:29:00.223Z",
       "event": "scan-created",
       "target": "https://nyktos.tech/",
       "authorizationState": "attested",
       "verification": null,
       "scanPolicy": "restricted",
-      "ip": "87.81.233.100",
+      "ip": "87.81.233.17",
       "flow": "stateless"
     },
     {
-      "at": "2026-10-28T21:49:46.538Z",
+      "at": "2026-11-03T03:29:03.359Z",
       "event": "scan-complete",
       "target": "https://nyktos.tech/",
       "flow": "stateless"
     },
     {
-      "at": "2026-10-28T21:49:46.540Z",
+      "at": "2026-11-03T03:29:04.723Z",
       "event": "report-finalized",
-      "auditorStatus": "engine-only",
+      "auditorStatus": "annotated",
       "chainsRendered": 0,
       "chainsUnproven": 0,
       "refutationStatus": "ok"
@@ -1266,8 +1236,7 @@
   ],
   "verification": null,
   "chains": {
-    "status": "not-run",
-    "reason": "Chain derivation is part of the Muse Spark auditor pass, which is not configured (META_API_KEY / META_MODEL_ID unset). No chains are shown; the engine never fabricates them.",
+    "status": "ok",
     "chains": [],
     "unproven": [],
     "invalid": []
@@ -1278,11 +1247,20 @@
     "entries": []
   },
   "auditor": {
-    "status": "engine-only",
-    "provider": "meta",
-    "modelId": null,
-    "reason": "META_API_KEY / META_MODEL_ID are not set; this is the deterministic engine-only report. Auditor reasoning, chains, and refutation are shown as not run, never simulated.",
-    "calls": [],
+    "status": "annotated",
+    "provider": "gemini",
+    "modelId": "gemini-3.5-flash-lite",
+    "reason": null,
+    "calls": [
+      {
+        "pass": "auditor",
+        "status": "ok"
+      },
+      {
+        "pass": "refutation",
+        "status": "ok"
+      }
+    ],
     "callCap": 3
   }
 }
