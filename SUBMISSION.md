@@ -32,7 +32,7 @@ https://auditcanvas.vercel.app
 
 ## Demo video
 
-[AFTER RECORDING]
+https://www.youtube.com/watch?v=RIXRpLfCDAE (unlisted, 3:10)
 
 ## Repository
 
