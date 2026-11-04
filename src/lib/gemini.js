@@ -93,14 +93,20 @@ async function callGeminiOnce(model, apiKey, { system, user }, { timeoutMs, fetc
 
 // Same contract as the Meta transport: (config, { system, user },
 // { timeoutMs }) -> parsed JSON, throwing on failure after the
-// bounded attempt sequence. Attempts per model: up to two on
-// timeout (a large report's auditor payload can straddle the
-// per-attempt cap on a slow generation; the Meta path likewise
-// gets two attempts), then the fallback model on capacity errors
-// or a repeated timeout (Oshudh pattern); config/parse errors
-// throw immediately. On success the model that actually answered
-// is recorded on the config object (usedModelId) so the pipeline
-// can stamp the report honestly when the fallback engaged.
+// bounded attempt sequence. Attempts per model: up to two on a
+// transient failure (timeout, or a capacity 503 after a short
+// pause) — a large report's auditor payload can straddle the
+// per-attempt cap on a slow generation, an overloaded model
+// sheds load in bursts, and the Meta path likewise gets two
+// attempts. When the configured model is not the fallback, a
+// capacity error moves to the fallback model at once (Oshudh
+// pattern); other repeated failures fall back too. Config/parse
+// errors throw immediately. On success the model that actually
+// answered is recorded on the config object (usedModelId) so the
+// pipeline can stamp the report honestly when the fallback
+// engaged.
+const CAPACITY_RETRY_PAUSE_MS = 3000;
+
 export async function callGemini(config, { system, user }, { timeoutMs = 30000, fetchFn = null } = {}) {
   const apiKey = process.env.GEMINI_API_KEY || '';
   if (!apiKey) throw new Error('GEMINI_API_KEY not set');
@@ -115,9 +121,15 @@ export async function callGemini(config, { system, user }, { timeoutMs = 30000, 
         config.usedModelId = model;
         return out;
       } catch (err) {
-        if (isTimeoutError(err) && attempt === 0) { lastErr = err; continue; }
-        if (isCapacityError(err) || isTimeoutError(err)) { lastErr = err; break; }
-        throw err;
+        lastErr = err;
+        const capacity = isCapacityError(err);
+        if (!capacity && !isTimeoutError(err)) throw err;
+        if (capacity && attempt === 0 && models.length > 1) break;
+        if (attempt === 0) {
+          if (capacity) await new Promise((r) => setTimeout(r, CAPACITY_RETRY_PAUSE_MS));
+          continue;
+        }
+        break;
       }
     }
   }
