@@ -52,6 +52,12 @@ function isCapacityError(err) {
   return /\b(429|503|529)\b/.test(msg) || /overloaded|high demand/i.test(msg);
 }
 
+function isTimeoutError(err) {
+  if (!err) return false;
+  if (err.name === 'TimeoutError' || err.name === 'AbortError') return true;
+  return /aborted due to timeout|operation was aborted/i.test(String(err.message || ''));
+}
+
 async function callGeminiOnce(model, apiKey, { system, user }, { timeoutMs, fetchFn }) {
   const res = await fetchFn(`${GEMINI_API_BASE}/models/${encodeURIComponent(model)}:generateContent`, {
     method: 'POST',
@@ -87,13 +93,15 @@ async function callGeminiOnce(model, apiKey, { system, user }, { timeoutMs, fetc
 
 // Same contract as the Meta transport: (config, { system, user },
 // { timeoutMs }) -> parsed JSON, throwing on failure after the
-// bounded attempt sequence. Attempts: the configured model, then
-// the fallback model on capacity errors only (Oshudh pattern);
-// config/parse errors throw immediately. On success the model that
-// actually answered is recorded on the config object (usedModelId)
-// so the pipeline can stamp the report honestly when the fallback
-// engaged.
-export async function callGemini(config, { system, user }, { timeoutMs = 20000, fetchFn = null } = {}) {
+// bounded attempt sequence. Attempts per model: up to two on
+// timeout (a large report's auditor payload can straddle the
+// per-attempt cap on a slow generation; the Meta path likewise
+// gets two attempts), then the fallback model on capacity errors
+// or a repeated timeout (Oshudh pattern); config/parse errors
+// throw immediately. On success the model that actually answered
+// is recorded on the config object (usedModelId) so the pipeline
+// can stamp the report honestly when the fallback engaged.
+export async function callGemini(config, { system, user }, { timeoutMs = 30000, fetchFn = null } = {}) {
   const apiKey = process.env.GEMINI_API_KEY || '';
   if (!apiKey) throw new Error('GEMINI_API_KEY not set');
   const primary = config.modelId || GEMINI_DEFAULT_MODEL;
@@ -101,13 +109,16 @@ export async function callGemini(config, { system, user }, { timeoutMs = 20000, 
   const doFetch = fetchFn || globalThis.fetch;
   let lastErr = null;
   for (const model of models) {
-    try {
-      const out = await callGeminiOnce(model, apiKey, { system, user }, { timeoutMs, fetchFn: doFetch });
-      config.usedModelId = model;
-      return out;
-    } catch (err) {
-      if (!isCapacityError(err)) throw err;
-      lastErr = err;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const out = await callGeminiOnce(model, apiKey, { system, user }, { timeoutMs, fetchFn: doFetch });
+        config.usedModelId = model;
+        return out;
+      } catch (err) {
+        if (isTimeoutError(err) && attempt === 0) { lastErr = err; continue; }
+        if (isCapacityError(err) || isTimeoutError(err)) { lastErr = err; break; }
+        throw err;
+      }
     }
   }
   throw lastErr || new Error('Gemini call failed');
