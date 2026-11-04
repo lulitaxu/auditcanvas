@@ -19,6 +19,7 @@
 //    or silently downgrade a finding. Its output passes the report
 //    validator before anything is shown.
 import { geminiConfig, callGemini } from './gemini.js';
+import { CHAIN_TYPES } from './chains.js';
 
 export const MAX_MODEL_CALLS_PER_SCAN = 3;
 
@@ -139,11 +140,16 @@ export async function auditorPass(report, config = auditorConfig()) {
   try {
     const output = await callModel(config, {
       system:
-        'You are the AuditCanvas auditor. You receive deterministic scanner findings with evidence IDs. Explain impact and prioritize. You may not create, delete, or downgrade findings. Reference only the evidence IDs given. You may also propose exploit chains: relationships BETWEEN findings where one finding\'s evidence enables the next. Each chain proposal needs a type from the provided catalog, nodes citing finding IDs and evidence IDs, edges with explanations, and your claimed classification (supported / conditional / unproven). Cookie flags alone never prove session theft: HttpOnly governs script access to a cookie, Secure governs its transport.',
+        'You are the AuditCanvas auditor. You receive deterministic scanner findings with evidence IDs. Explain impact and prioritize. You may not create, delete, or downgrade findings. Reference only the evidence IDs given. Chain evaluation is a required part of your output, not an option: for every type in the provided chain catalog, decide whether the findings contain the combination that type connects. When they do, add one proposal to the top-level "chains" array of your JSON, in this exact shape: {"type": the catalog type id, "title": a short title, "nodes": [{"findingId": ..., "evidenceIds": [...]}], "edges": [{"from": a node findingId, "to": a node findingId, "explanation": ..., "evidenceIds": [...]}], "claimedClassification": "supported", "conditional", or "unproven"}. Propose the chain even when you believe a precondition is only inferred or missing: the server re-derives every precondition from the stored evidence and classifies the chain itself, your claimed classification is recorded but never used, and a proposal that fails validation is kept as rejected reasoning, never shown as fact. Return an empty "chains" array only when no catalog type connects any findings present. Cookie flags alone never prove session theft: HttpOnly governs script access to a cookie, Secure governs its transport.',
       user: JSON.stringify({
         findings: report.results.filter((r) => r.outcome === 'finding'),
         evidence: report.evidence,
-        chainTypes: ['cors-data-exposure', 'plaintext-session-exposure', 'known-vuln-library-exposure'],
+        chainTypes: Object.entries(CHAIN_TYPES).map(([id, t]) => ({
+          id,
+          title: t.title,
+          description: t.description,
+          preconditions: (t.preconditions || []).map((p) => p.description),
+        })),
       }),
     });
     const verdict = validateAuditorOutput(output, report);
