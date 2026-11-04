@@ -93,19 +93,21 @@ async function callGeminiOnce(model, apiKey, { system, user }, { timeoutMs, fetc
 
 // Same contract as the Meta transport: (config, { system, user },
 // { timeoutMs }) -> parsed JSON, throwing on failure after the
-// bounded attempt sequence. Attempts per model: up to two on a
-// transient failure (timeout, or a capacity 503 after a short
-// pause) — a large report's auditor payload can straddle the
-// per-attempt cap on a slow generation, an overloaded model
-// sheds load in bursts, and the Meta path likewise gets two
-// attempts. When the configured model is not the fallback, a
-// capacity error moves to the fallback model at once (Oshudh
-// pattern); other repeated failures fall back too. Config/parse
-// errors throw immediately. On success the model that actually
-// answered is recorded on the config object (usedModelId) so the
-// pipeline can stamp the report honestly when the fallback
-// engaged.
-const CAPACITY_RETRY_PAUSE_MS = 3000;
+// bounded attempt sequence. Attempts per model: up to three on a
+// transient failure (timeout, or a capacity 503), with a short
+// pause before each retry — a large report's auditor payload can
+// straddle the per-attempt cap on a slow generation, and an
+// overloaded model sheds load in bursts, so a bounded retry
+// sequence is the difference between a stamped failure and a
+// completed report. When the configured model is not the
+// fallback, a capacity error moves to the fallback model at once
+// (Oshudh pattern); other repeated failures fall back too.
+// Config/parse errors throw immediately. On success the model
+// that actually answered is recorded on the config object
+// (usedModelId) so the pipeline can stamp the report honestly
+// when the fallback engaged.
+const MAX_ATTEMPTS_PER_MODEL = 3;
+const retryPauseMs = (err, attempt) => (isCapacityError(err) ? (attempt === 0 ? 3000 : 8000) : (attempt === 0 ? 0 : 2000));
 
 export async function callGemini(config, { system, user }, { timeoutMs = 30000, fetchFn = null } = {}) {
   const apiKey = process.env.GEMINI_API_KEY || '';
@@ -115,7 +117,7 @@ export async function callGemini(config, { system, user }, { timeoutMs = 30000, 
   const doFetch = fetchFn || globalThis.fetch;
   let lastErr = null;
   for (const model of models) {
-    for (let attempt = 0; attempt < 2; attempt++) {
+    for (let attempt = 0; attempt < MAX_ATTEMPTS_PER_MODEL; attempt++) {
       try {
         const out = await callGeminiOnce(model, apiKey, { system, user }, { timeoutMs, fetchFn: doFetch });
         config.usedModelId = model;
@@ -124,9 +126,10 @@ export async function callGemini(config, { system, user }, { timeoutMs = 30000, 
         lastErr = err;
         const capacity = isCapacityError(err);
         if (!capacity && !isTimeoutError(err)) throw err;
-        if (capacity && attempt === 0 && models.length > 1) break;
-        if (attempt === 0) {
-          if (capacity) await new Promise((r) => setTimeout(r, CAPACITY_RETRY_PAUSE_MS));
+        if (capacity && models.length > 1) break;
+        if (attempt < MAX_ATTEMPTS_PER_MODEL - 1) {
+          const pause = retryPauseMs(err, attempt);
+          if (pause > 0) await new Promise((r) => setTimeout(r, pause));
           continue;
         }
         break;
