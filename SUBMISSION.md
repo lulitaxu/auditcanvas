@@ -122,14 +122,17 @@ and refutation assessment sit in front of a server-side provider
 switch (`AUDITOR_PROVIDER`) — so the live demo runs the identical
 auditor on **Gemini (model `gemini-3.5-flash-lite`)**, verified live
 on Nov 3, 2026 with both model passes completing (auditor status
-"annotated"). Every report's reproducibility stamp names the provider
+"annotated"), and re-verified end to end on Nov 4, 2026: the seeded
+demo renders validated attack-path chains (supported and
+conditional) and the refutation pass completes on the live
+deployment. Every report's reproducibility stamp names the provider
 and model that actually produced it, so nothing about this is hidden
 in the output. Switching the deployment back to Muse Spark is an
 environment change, not a code change.
 
 The auditor is used in at most **three bounded calls per scan** — no
 agent loops, strict output schemas, fixed evidence inputs, a timeout
-with one retry, and a per-scan cost cap:
+with bounded retries, and a per-scan cost cap:
 
 1. **Auditor pass.** Given the stored evidence, the auditor explains
    each finding's impact on this kind of site, orders a fix-first
