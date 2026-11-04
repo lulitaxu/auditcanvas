@@ -81,7 +81,7 @@ main { max-width: 880px; margin: 0 auto; padding: 40px 20px 80px; }
   letter-spacing: -0.015em; margin: 14px 0 10px;
 }
 .masthead p { max-width: 62ch; color: var(--muted); margin: 0 0 20px; }
-.masthead .policy-line { margin-bottom: 0; }
+.masthead .policy-line { margin-top: 12px; margin-bottom: 0; }
 
 .btn {
   appearance: none; border: 1px solid var(--accent); background: var(--accent); color: var(--accent-ink);

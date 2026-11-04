@@ -10,6 +10,12 @@ const OUTCOME_LABEL = {
   'not-assessed': 'Not assessed',
 };
 
+// Scanner details may carry a leading machine token (e.g.
+// "[reason:policy-restricted]") that keys the reason in the stored
+// data. It is metadata, not prose, so it never reaches the reader.
+const humanDetail = (s) =>
+  typeof s === 'string' ? s.replace(/^\[[a-z-]+:[^\]]+\]\s*/, '') : s;
+
 const NODE_W = 196;
 const NODE_H = 42;
 const GAP_Y = 14;
@@ -447,7 +453,7 @@ export default function ReportView({ report, scanId, diff = null, onRescan = nul
               {r.inference ? <span className="sev" style={{ color: 'var(--inconclusive)' }}>inference</span> : null}
               {r.refutation ? <span className="chip refute-chip">{r.refutation.outcomeLabel}</span> : null}
             </div>
-            <div className="result-detail">{r.detail}</div>
+            <div className="result-detail">{humanDetail(r.detail)}</div>
             {r.evidenceIds && r.evidenceIds.length ? (
               <div className="evids">evidence: {r.evidenceIds.join(', ')}</div>
             ) : null}
