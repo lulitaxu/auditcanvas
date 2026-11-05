@@ -52,10 +52,15 @@ export function notConfiguredReason(config) {
     : 'META_API_KEY / META_MODEL_ID are not set; report is engine-only (deterministic).';
 }
 
-// One bounded model call: timeout, one retry, JSON expected. Written
-// against a chat-completions shape with a JSON-parse fallback; the exact
-// endpoint/response_format support must be verified against the account
-// on Night 0 before this is exercised live (see HACKATHON.md).
+// One bounded model call: single attempt, long timeout, JSON expected.
+// Written against a chat-completions shape with a JSON-parse fallback;
+// the exact endpoint/response_format support must be verified against
+// the account on Night 0 before this is exercised live (see
+// HACKATHON.md). Verified live 2026-11-05: Muse Spark generation on
+// the full auditor payload takes well over 20s, so the original
+// 20s-timeout-plus-retry shape aborted every pass; one attempt with a
+// 110s ceiling lets a slow generation land inside the finalize
+// route's 300s budget (two passes worst case ~220s + assembly).
 //
 // Dispatch: a gemini-provider config goes to the Gemini transport
 // (gemini.js, same call contract); everything else takes the Meta
@@ -65,10 +70,10 @@ export function notConfiguredReason(config) {
 export async function callModel(config, payload, opts = {}) {
   if (config && config.provider === 'gemini') return callGemini(config, payload, opts);
   const { system, user } = payload;
-  const { timeoutMs = 20000 } = opts;
+  const { timeoutMs = 110000 } = opts;
   const { default: fetchFn } = { default: globalThis.fetch };
   let lastErr = null;
-  for (let attempt = 0; attempt < 2; attempt++) {
+  for (let attempt = 0; attempt < 1; attempt++) {
     try {
       const res = await fetchFn(`${config.apiBase}/chat/completions`, {
         method: 'POST',
