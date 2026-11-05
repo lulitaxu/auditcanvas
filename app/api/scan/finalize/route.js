@@ -4,7 +4,7 @@ import { bundleSetDigest } from '../../../../src/lib/bundlesig.js';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 // POST /api/scan/finalize { scan: {scanId, target, attested, rescanOf,
 // createdAt}, bundles: [{group, scanPolicy, results, evidence,

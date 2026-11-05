@@ -4,7 +4,7 @@ import { adminJson } from '../../../../../src/lib/admin/http.js';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 // POST /api/admin/scans/finalize { scan: { scanId }, bundles }
 //
