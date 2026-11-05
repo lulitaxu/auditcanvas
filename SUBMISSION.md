@@ -112,27 +112,31 @@ delete, or silently downgrade a finding, and it never touches the
 scores.
 
 **Which model:** this auditor layer was designed and built for Muse
-Spark on the Meta Model API, and Muse Spark remains the intended
-provider. During the hackathon window, however, the project's Meta
-account was restricted over a failed payment-method authorization
-hold, so no Meta API key could be issued and no Muse Spark call could
-be made. The auditor contract is provider-agnostic by construction —
-the same prompts, output schemas, report validator, chain classifier,
-and refutation assessment sit in front of a server-side provider
-switch (`AUDITOR_PROVIDER`) — so the live demo runs the identical
-auditor on **Gemini (model `gemini-3.5-flash-lite`)**, verified live
-on Nov 3, 2026 with both model passes completing (auditor status
-"annotated"), and re-verified end to end on Nov 4, 2026: the seeded
-demo renders validated attack-path chains (supported and
-conditional) and the refutation pass completes on the live
-deployment. Every report's reproducibility stamp names the provider
-and model that actually produced it, so nothing about this is hidden
-in the output. Switching the deployment back to Muse Spark is an
-environment change, not a code change.
+Spark on the Meta Model API, and the live deployment runs **Muse
+Spark (`muse-spark-1.3`)**. During part of the hackathon window the
+project's Meta account was restricted over a failed payment-method
+authorization hold, so no Meta API key could be issued and no Muse
+Spark call could be made; in that period the demo ran the identical
+auditor on a Gemini fallback (`gemini-3.5-flash-lite`, verified live
+Nov 3-4, 2026). The auditor contract is provider-agnostic by
+construction — the same prompts, output schemas, report validator,
+chain classifier, and refutation assessment sit in front of a
+server-side provider switch (`AUDITOR_PROVIDER`). On Nov 5, 2026,
+with the restriction lifted and a key issued, the deployment was
+switched back to Muse Spark through that switch and verified live
+end to end: the seeded demo returns a fully annotated report stamped
+provider `meta`, model `muse-spark-1.3`, with validated attack-path
+chains rendered and the refutation pass completing. Muse Spark
+generation on the full auditor payload is slow (a finalize takes
+roughly two minutes), so the Meta call path uses a single attempt
+with a long timeout inside a raised finalize budget; the fixture
+suite still passes 156/156. Every report's reproducibility stamp
+names the provider and model that actually produced it, so nothing
+about this is hidden in the output.
 
 The auditor is used in at most **three bounded calls per scan** — no
-agent loops, strict output schemas, fixed evidence inputs, a timeout
-with bounded retries, and a per-scan cost cap:
+agent loops, strict output schemas, fixed evidence inputs, a bounded
+timeout per call, and a per-scan cost cap:
 
 1. **Auditor pass.** Given the stored evidence, the auditor explains
    each finding's impact on this kind of site, orders a fix-first
@@ -213,9 +217,9 @@ runtime, zero runtime dependencies beyond Next/React. Deterministic
 scanner and scoring in `src/lib/`; the auditor model sits behind a
 server-side provider switch — built for Muse Spark via the Meta
 Model API (`https://api.meta.ai/v1`, model ID read from environment,
-never assumed in code), with the live deployment running the Gemini
-fallback (`gemini-3.5-flash-lite`) for the reason stated in the
-auditor section above. CVE data: versioned snapshot from the NVD
+never assumed in code); the live deployment runs Muse Spark, with
+the Gemini fallback (`gemini-3.5-flash-lite`) retained behind the
+same switch. CVE data: versioned snapshot from the NVD
 API 2.0.
 Dependency-free ZIP writer for the fix pack.
 
@@ -225,18 +229,21 @@ Dependency-free ZIP writer for the fix pack.
   chain classifier, the refutation assessment, and the engine-only
   fallback — is built and wired, and its non-model logic is exercised
   by the fixture suite (156/156 assertions green on Nov 3, 2026).
-  **Live-model verification is complete on the fallback provider**:
-  on Nov 3, 2026 the deployed app produced fully annotated reports
+  **Live-model verification is complete on both providers**: on
+  Nov 3, 2026 the deployed app produced fully annotated reports
   (auditor pass and refutation pass both ok) stamped provider
-  `gemini`, model `gemini-3.5-flash-lite`. **Muse Spark verification
-  remains pending** for the reason stated in the auditor section: the
-  Meta account restriction is on the founder's side with Meta and
-  could not be cleared inside the window. The demo was not recorded
-  against a mocked model.
+  `gemini`, model `gemini-3.5-flash-lite`, and on Nov 5, 2026 —
+  after the Meta account restriction lifted — the same verification
+  passed on Muse Spark, stamped provider `meta`, model
+  `muse-spark-1.3`, both passes ok, with chains and refutation
+  entries in the report. The demo was not recorded against a mocked
+  model.
 - Preloaded sample reports are real scans of our own sites
   (nyktos.tech, cliphaus.dev) produced by the deployed app itself and
   saved with their reproducibility stamps; the samples now live in
-  Judge mode show the same Gemini fallback stamp as the live demo.
+  Judge mode show the same Muse Spark stamp as the live demo
+  (regenerated through the deployed app on Nov 5, 2026, auditor
+  annotated on both passes).
   No sample report in this project is hand-assembled.
 
 ---
@@ -246,12 +253,14 @@ Dependency-free ZIP writer for the fix pack.
 1. ~~Deploy → paste the live URL~~ DONE Nov 3, 2026:
    https://auditcanvas.vercel.app is live, and the Judge-mode samples
    were regenerated through the deployed app the same day (Gemini
-   fallback stamp, auditor annotated).
+   fallback stamp, auditor annotated). Regenerated again Nov 5, 2026
+   after the switch back to Muse Spark (meta stamp, auditor
+   annotated).
 2. Record the demo video from `DEMO-SCRIPT.md` (pre-recording
    checklist first, with the fallback addendum at the top) → paste
    the link into **[AFTER RECORDING]**.
-3. The first live auditor call has run on the deployed fallback key
-   (Nov 3, 2026); the honesty notes above already reflect that. If the
-   Meta restriction clears before the deadline and a Muse Spark scan
-   verifies, update the auditor section before submitting — otherwise
-   submit with the text as written.
+3. ~~If the Meta restriction clears before the deadline and a Muse
+   Spark scan verifies, update the auditor section~~ DONE Nov 5,
+   2026: the restriction cleared, a Muse Spark scan verified live
+   end to end, and this document was updated to match the live
+   deployment.

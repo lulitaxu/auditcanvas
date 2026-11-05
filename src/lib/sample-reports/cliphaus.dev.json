@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "scanId": "8gQTNiIhioalsuPDGjEz9pJO",
+  "scanId": "KKad6ltSkbAh94zlvMUlWWbQ",
   "rescanOf": null,
   "target": "https://cliphaus.dev/",
   "origin": "public",
@@ -8,8 +8,8 @@
   "authorizationState": "attested",
   "scanPolicy": "restricted",
   "status": "complete",
-  "startedAt": "2026-11-03T03:29:04.921Z",
-  "updatedAt": "2026-11-03T03:29:15.826Z",
+  "startedAt": "2026-11-05T06:56:45.600Z",
+  "updatedAt": "2026-11-05T06:56:50.573Z",
   "groupStatus": {
     "headers": "done",
     "tls": "done",
@@ -188,7 +188,7 @@
       "group": "tls",
       "outcome": "pass",
       "severity": null,
-      "title": "Certificate valid for 79 more day(s)",
+      "title": "Certificate valid for 77 more day(s)",
       "detail": "valid_to is Jan 21 17:46:50 2027 GMT.",
       "evidenceIds": [
         "ev-0002"
@@ -204,7 +204,7 @@
       "title": "No cookies set by the landing response",
       "detail": "The landing response carried no Set-Cookie header, so there are no cookie attributes to fault.",
       "evidenceIds": [
-        "ev-0001"
+        "ev-0003"
       ],
       "inference": false
     },
@@ -228,8 +228,8 @@
       "title": "Git repository metadata not exposed (/.git/HEAD -> 404)",
       "detail": "The path returns a not-found status.",
       "evidenceIds": [
-        "ev-0004",
-        "ev-0003"
+        "ev-0005",
+        "ev-0004"
       ],
       "inference": false
     },
@@ -242,8 +242,8 @@
       "title": "Environment file not exposed (/.env -> 404)",
       "detail": "The path returns a not-found status.",
       "evidenceIds": [
-        "ev-0005",
-        "ev-0003"
+        "ev-0006",
+        "ev-0004"
       ],
       "inference": false
     },
@@ -256,8 +256,8 @@
       "title": "WordPress admin not exposed (/wp-admin/ -> 404)",
       "detail": "The path returns a not-found status.",
       "evidenceIds": [
-        "ev-0006",
-        "ev-0003"
+        "ev-0007",
+        "ev-0004"
       ],
       "inference": false
     },
@@ -324,7 +324,7 @@
       "outcome": "pass",
       "severity": null,
       "title": "No known secret patterns in first-party JavaScript",
-      "detail": "No known secret patterns in 4 scanned first-party assets (514789 bytes). Patterns are anchored formats (AWS, Stripe, GitHub, Supabase service-role, Slack, private-key blocks); this does not prove the absence of every possible credential.",
+      "detail": "No known secret patterns in 4 scanned first-party assets (521042 bytes). Patterns are anchored formats (AWS, Stripe, GitHub, Supabase service-role, Slack, private-key blocks); this does not prove the absence of every possible credential.",
       "evidenceIds": [
         "ev-0013",
         "ev-0014",
@@ -377,7 +377,7 @@
       "title": "No tracked client libraries detected",
       "detail": "Scanned 6 script asset(s) from the landing page; none matched a library in snapshot nvd-2026-10-28. Libraries loaded from third-party CDNs are detected by the same rules when reachable.",
       "evidenceIds": [
-        "ev-0007",
+        "ev-0003",
         "ev-0017"
       ],
       "inference": false
@@ -417,7 +417,7 @@
       "title": "No mixed content in the landing page asset list",
       "detail": "No script/img/link/iframe subresource is loaded over http://.",
       "evidenceIds": [
-        "ev-0007"
+        "ev-0003"
       ],
       "inference": false
     },
@@ -451,7 +451,7 @@
       "id": "ev-0001",
       "kind": "http-response",
       "target": "https://cliphaus.dev/",
-      "at": "2026-11-03T03:29:08.926Z",
+      "at": "2026-11-05T06:56:48.332Z",
       "data": {
         "status": 200,
         "finalUrl": "https://cliphaus.dev/",
@@ -486,7 +486,7 @@
           "x-dns-prefetch-control"
         ],
         "setCookies": [],
-        "bodyBytes": 85029,
+        "bodyBytes": 91282,
         "truncated": false
       }
     },
@@ -494,7 +494,7 @@
       "id": "ev-0002",
       "kind": "tls",
       "target": "https://cliphaus.dev/",
-      "at": "2026-11-03T03:29:09.050Z",
+      "at": "2026-11-05T06:56:48.520Z",
       "data": {
         "protocol": "TLSv1.3",
         "authorized": true,
@@ -521,11 +521,54 @@
     {
       "id": "ev-0003",
       "kind": "http-response",
-      "target": "https://cliphaus.dev/ac-nonexistent-uceh95zmv8",
-      "at": "2026-11-03T03:29:13.959Z",
+      "target": "https://cliphaus.dev/",
+      "at": "2026-11-05T06:56:48.759Z",
+      "data": {
+        "status": 200,
+        "finalUrl": "https://cliphaus.dev/",
+        "redirectCount": 0,
+        "headers": {
+          "content-type": "text/html; charset=utf-8",
+          "strict-transport-security": "max-age=31536000; includeSubDomains",
+          "content-security-policy": "default-src 'self'; script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' blob: https://*.supabase.co https://*.backblazeb2.com; connect-src 'self' https://*.supabase.co https://*.backblazeb2.com https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'",
+          "permissions-policy": "camera=(), microphone=(), geolocation=(), payment=()",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "x-content-type-options": "nosniff",
+          "server": "cloudflare"
+        },
+        "headerNames": [
+          "alt-svc",
+          "cache-control",
+          "cf-ray",
+          "connection",
+          "content-security-policy",
+          "content-type",
+          "date",
+          "link",
+          "nel",
+          "permissions-policy",
+          "referrer-policy",
+          "report-to",
+          "server",
+          "strict-transport-security",
+          "transfer-encoding",
+          "vary",
+          "x-content-type-options",
+          "x-dns-prefetch-control"
+        ],
+        "setCookies": [],
+        "bodyBytes": 90136,
+        "truncated": false
+      }
+    },
+    {
+      "id": "ev-0004",
+      "kind": "http-response",
+      "target": "https://cliphaus.dev/ac-nonexistent-nsjwp9azzb",
+      "at": "2026-11-05T06:56:49.056Z",
       "data": {
         "status": 404,
-        "finalUrl": "https://cliphaus.dev/ac-nonexistent-uceh95zmv8",
+        "finalUrl": "https://cliphaus.dev/ac-nonexistent-nsjwp9azzb",
         "redirectCount": 0,
         "headers": {
           "content-type": "text/html; charset=utf-8",
@@ -561,10 +604,10 @@
       }
     },
     {
-      "id": "ev-0004",
+      "id": "ev-0005",
       "kind": "http-response",
       "target": "https://cliphaus.dev/.git/HEAD",
-      "at": "2026-11-03T03:29:14.032Z",
+      "at": "2026-11-05T06:56:49.093Z",
       "data": {
         "status": 404,
         "finalUrl": "https://cliphaus.dev/.git/HEAD",
@@ -603,10 +646,10 @@
       }
     },
     {
-      "id": "ev-0005",
+      "id": "ev-0006",
       "kind": "http-response",
       "target": "https://cliphaus.dev/.env",
-      "at": "2026-11-03T03:29:14.083Z",
+      "at": "2026-11-05T06:56:49.115Z",
       "data": {
         "status": 404,
         "finalUrl": "https://cliphaus.dev/.env",
@@ -645,10 +688,10 @@
       }
     },
     {
-      "id": "ev-0006",
+      "id": "ev-0007",
       "kind": "http-response",
       "target": "https://cliphaus.dev/wp-admin/",
-      "at": "2026-11-03T03:29:14.185Z",
+      "at": "2026-11-05T06:56:49.180Z",
       "data": {
         "status": 404,
         "finalUrl": "https://cliphaus.dev/wp-admin",
@@ -687,56 +730,13 @@
       }
     },
     {
-      "id": "ev-0007",
-      "kind": "http-response",
-      "target": "https://cliphaus.dev/",
-      "at": "2026-11-03T03:29:14.418Z",
-      "data": {
-        "status": 200,
-        "finalUrl": "https://cliphaus.dev/",
-        "redirectCount": 0,
-        "headers": {
-          "content-type": "text/html; charset=utf-8",
-          "strict-transport-security": "max-age=31536000; includeSubDomains",
-          "content-security-policy": "default-src 'self'; script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' blob: https://*.supabase.co https://*.backblazeb2.com; connect-src 'self' https://*.supabase.co https://*.backblazeb2.com https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'",
-          "permissions-policy": "camera=(), microphone=(), geolocation=(), payment=()",
-          "referrer-policy": "strict-origin-when-cross-origin",
-          "x-content-type-options": "nosniff",
-          "server": "cloudflare"
-        },
-        "headerNames": [
-          "alt-svc",
-          "cache-control",
-          "cf-ray",
-          "connection",
-          "content-security-policy",
-          "content-type",
-          "date",
-          "link",
-          "nel",
-          "permissions-policy",
-          "referrer-policy",
-          "report-to",
-          "server",
-          "strict-transport-security",
-          "transfer-encoding",
-          "vary",
-          "x-content-type-options",
-          "x-dns-prefetch-control"
-        ],
-        "setCookies": [],
-        "bodyBytes": 83883,
-        "truncated": false
-      }
-    },
-    {
       "id": "ev-0008",
       "kind": "http-response",
-      "target": "https://cliphaus.dev/ac-nonexistent-0sydtvljrt",
-      "at": "2026-11-03T03:29:14.469Z",
+      "target": "https://cliphaus.dev/ac-nonexistent-kc6r4fwk0n",
+      "at": "2026-11-05T06:56:49.378Z",
       "data": {
         "status": 404,
-        "finalUrl": "https://cliphaus.dev/ac-nonexistent-0sydtvljrt",
+        "finalUrl": "https://cliphaus.dev/ac-nonexistent-kc6r4fwk0n",
         "redirectCount": 0,
         "headers": {
           "content-type": "text/html; charset=utf-8",
@@ -775,7 +775,7 @@
       "id": "ev-0009",
       "kind": "http-response",
       "target": "https://cliphaus.dev/.env.local",
-      "at": "2026-11-03T03:29:14.504Z",
+      "at": "2026-11-05T06:56:49.424Z",
       "data": {
         "status": 404,
         "finalUrl": "https://cliphaus.dev/.env.local",
@@ -817,7 +817,7 @@
       "id": "ev-0010",
       "kind": "http-response",
       "target": "https://cliphaus.dev/.env.production",
-      "at": "2026-11-03T03:29:14.556Z",
+      "at": "2026-11-05T06:56:49.443Z",
       "data": {
         "status": 404,
         "finalUrl": "https://cliphaus.dev/.env.production",
@@ -859,7 +859,7 @@
       "id": "ev-0011",
       "kind": "http-response",
       "target": "https://cliphaus.dev/.env.bak",
-      "at": "2026-11-03T03:29:14.623Z",
+      "at": "2026-11-05T06:56:49.464Z",
       "data": {
         "status": 404,
         "finalUrl": "https://cliphaus.dev/.env.bak",
@@ -901,7 +901,7 @@
       "id": "ev-0012",
       "kind": "http-response",
       "target": "https://cliphaus.dev/.git/config",
-      "at": "2026-11-03T03:29:14.692Z",
+      "at": "2026-11-05T06:56:49.497Z",
       "data": {
         "status": 404,
         "finalUrl": "https://cliphaus.dev/.git/config",
@@ -943,12 +943,12 @@
       "id": "ev-0013",
       "kind": "content-scan",
       "target": "https://cliphaus.dev/",
-      "at": "2026-11-03T03:29:14.876Z",
+      "at": "2026-11-05T06:56:49.570Z",
       "data": {
         "asset": "(inline root document)",
         "inline": true,
-        "bytesFetched": 83822,
-        "bytesTotal": 83883,
+        "bytesFetched": 90075,
+        "bytesTotal": 90136,
         "truncated": false
       }
     },
@@ -956,7 +956,7 @@
       "id": "ev-0014",
       "kind": "content-scan",
       "target": "https://cliphaus.dev/_next/static/chunks/37z413kjv7sf0.js",
-      "at": "2026-11-03T03:29:14.876Z",
+      "at": "2026-11-05T06:56:49.570Z",
       "data": {
         "asset": "https://cliphaus.dev/_next/static/chunks/37z413kjv7sf0.js",
         "inline": false,
@@ -969,7 +969,7 @@
       "id": "ev-0015",
       "kind": "content-scan",
       "target": "https://cliphaus.dev/_next/static/chunks/0m7a9yen5gu1g.js",
-      "at": "2026-11-03T03:29:14.876Z",
+      "at": "2026-11-05T06:56:49.570Z",
       "data": {
         "asset": "https://cliphaus.dev/_next/static/chunks/0m7a9yen5gu1g.js",
         "inline": false,
@@ -982,7 +982,7 @@
       "id": "ev-0016",
       "kind": "content-scan",
       "target": "https://cliphaus.dev/_next/static/chunks/1hb838xsm_ecd.js",
-      "at": "2026-11-03T03:29:14.876Z",
+      "at": "2026-11-05T06:56:49.570Z",
       "data": {
         "asset": "https://cliphaus.dev/_next/static/chunks/1hb838xsm_ecd.js",
         "inline": false,
@@ -995,7 +995,7 @@
       "id": "ev-0017",
       "kind": "cve-snapshot",
       "target": "https://cliphaus.dev/",
-      "at": "2026-11-03T03:29:14.970Z",
+      "at": "2026-11-05T06:56:49.671Z",
       "data": {
         "snapshotVersion": "nvd-2026-10-28",
         "source": "NVD API 2.0 (services.nvd.nist.gov), verified pull 2026-10-28",
@@ -1006,14 +1006,14 @@
       "id": "ev-0018",
       "kind": "dns",
       "target": "cliphaus.dev",
-      "at": "2026-11-03T03:29:15.375Z",
+      "at": "2026-11-05T06:56:50.072Z",
       "data": {
         "query": "cliphaus.dev TXT",
         "status": "ok",
         "records": [
+          "brevo-code:94e159820285d106c9d74bc6ce053382",
           "google-site-verification=Lt9ydBHZ58do0y-9pNo8a3EHqxqMqzcVb87n3HpcL58",
-          "v=spf1 include:_spf.mx.cloudflare.net ~all",
-          "brevo-code:94e159820285d106c9d74bc6ce053382"
+          "v=spf1 include:_spf.mx.cloudflare.net ~all"
         ]
       }
     },
@@ -1021,7 +1021,7 @@
       "id": "ev-0019",
       "kind": "dns",
       "target": "_dmarc.cliphaus.dev",
-      "at": "2026-11-03T03:29:15.394Z",
+      "at": "2026-11-05T06:56:50.078Z",
       "data": {
         "query": "_dmarc.cliphaus.dev TXT",
         "status": "ok",
@@ -1034,7 +1034,7 @@
       "id": "ev-0020",
       "kind": "http-response",
       "target": "http://cliphaus.dev/",
-      "at": "2026-11-03T03:29:15.648Z",
+      "at": "2026-11-05T06:56:50.321Z",
       "data": {
         "status": 301,
         "finalUrl": "http://cliphaus.dev/",
@@ -1111,10 +1111,10 @@
   "stamp": {
     "scannerVersion": "0.1.0",
     "rulesVersion": "1.1.0",
-    "provider": "gemini",
-    "modelId": "gemini-3.5-flash-lite",
+    "provider": "meta",
+    "modelId": "muse-spark-1.3",
     "modelConfigured": true,
-    "timestamp": "2026-11-03T03:29:15.826Z",
+    "timestamp": "2026-11-05T06:56:50.573Z",
     "target": "https://cliphaus.dev/",
     "origin": "public",
     "authorizationState": "attested",
@@ -1130,23 +1130,23 @@
   },
   "auditLog": [
     {
-      "at": "2026-11-03T03:29:04.921Z",
+      "at": "2026-11-05T06:56:45.600Z",
       "event": "scan-created",
       "target": "https://cliphaus.dev/",
       "authorizationState": "attested",
       "verification": null,
       "scanPolicy": "restricted",
-      "ip": "87.81.233.17",
+      "ip": "87.81.233.16",
       "flow": "stateless"
     },
     {
-      "at": "2026-11-03T03:29:15.826Z",
+      "at": "2026-11-05T06:56:50.573Z",
       "event": "scan-complete",
       "target": "https://cliphaus.dev/",
       "flow": "stateless"
     },
     {
-      "at": "2026-11-03T03:29:17.044Z",
+      "at": "2026-11-05T06:57:06.766Z",
       "event": "report-finalized",
       "auditorStatus": "annotated",
       "chainsRendered": 0,
@@ -1168,8 +1168,8 @@
   },
   "auditor": {
     "status": "annotated",
-    "provider": "gemini",
-    "modelId": "gemini-3.5-flash-lite",
+    "provider": "meta",
+    "modelId": "muse-spark-1.3",
     "reason": null,
     "calls": [
       {

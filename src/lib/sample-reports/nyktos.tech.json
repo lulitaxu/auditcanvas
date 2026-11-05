@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "scanId": "aK-ZeHrwuvEmz9_quayaU3us",
+  "scanId": "jL4_Holyg-TQ09fv06eXLv1p",
   "rescanOf": null,
   "target": "https://nyktos.tech/",
   "origin": "public",
@@ -8,8 +8,8 @@
   "authorizationState": "attested",
   "scanPolicy": "restricted",
   "status": "complete",
-  "startedAt": "2026-11-03T03:29:00.223Z",
-  "updatedAt": "2026-11-03T03:29:03.359Z",
+  "startedAt": "2026-11-05T06:56:24.611Z",
+  "updatedAt": "2026-11-05T06:56:28.166Z",
   "groupStatus": {
     "headers": "done",
     "tls": "done",
@@ -188,7 +188,7 @@
       "group": "tls",
       "outcome": "pass",
       "severity": null,
-      "title": "Certificate valid for 69 more day(s)",
+      "title": "Certificate valid for 67 more day(s)",
       "detail": "valid_to is Jan 11 22:30:03 2027 GMT.",
       "evidenceIds": [
         "ev-0002"
@@ -451,7 +451,7 @@
       "id": "ev-0001",
       "kind": "http-response",
       "target": "https://nyktos.tech/",
-      "at": "2026-11-03T03:29:00.685Z",
+      "at": "2026-11-05T06:56:25.036Z",
       "data": {
         "status": 200,
         "finalUrl": "https://nyktos.tech/",
@@ -502,7 +502,7 @@
       "id": "ev-0002",
       "kind": "tls",
       "target": "https://nyktos.tech/",
-      "at": "2026-11-03T03:29:00.917Z",
+      "at": "2026-11-05T06:56:25.252Z",
       "data": {
         "protocol": "TLSv1.3",
         "authorized": true,
@@ -529,11 +529,11 @@
     {
       "id": "ev-0003",
       "kind": "http-response",
-      "target": "https://nyktos.tech/ac-nonexistent-s7o8zzor0w",
-      "at": "2026-11-03T03:29:01.583Z",
+      "target": "https://nyktos.tech/ac-nonexistent-is9g3o6nxz",
+      "at": "2026-11-05T06:56:25.978Z",
       "data": {
         "status": 404,
-        "finalUrl": "https://nyktos.tech/ac-nonexistent-s7o8zzor0w",
+        "finalUrl": "https://nyktos.tech/ac-nonexistent-is9g3o6nxz",
         "redirectCount": 0,
         "headers": {
           "content-type": "text/html; charset=utf-8",
@@ -583,7 +583,7 @@
       "id": "ev-0004",
       "kind": "http-response",
       "target": "https://nyktos.tech/.git/HEAD",
-      "at": "2026-11-03T03:29:01.646Z",
+      "at": "2026-11-05T06:56:26.105Z",
       "data": {
         "status": 404,
         "finalUrl": "https://nyktos.tech/.git/HEAD",
@@ -636,7 +636,7 @@
       "id": "ev-0005",
       "kind": "http-response",
       "target": "https://nyktos.tech/.env",
-      "at": "2026-11-03T03:29:01.690Z",
+      "at": "2026-11-05T06:56:26.151Z",
       "data": {
         "status": 404,
         "finalUrl": "https://nyktos.tech/.env",
@@ -689,7 +689,7 @@
       "id": "ev-0006",
       "kind": "http-response",
       "target": "https://nyktos.tech/wp-admin/",
-      "at": "2026-11-03T03:29:01.780Z",
+      "at": "2026-11-05T06:56:26.223Z",
       "data": {
         "status": 403,
         "finalUrl": "https://nyktos.tech/wp-admin",
@@ -721,11 +721,11 @@
     {
       "id": "ev-0007",
       "kind": "http-response",
-      "target": "https://nyktos.tech/ac-nonexistent-bvsnv4f2na",
-      "at": "2026-11-03T03:29:02.079Z",
+      "target": "https://nyktos.tech/ac-nonexistent-eotfrrqasj",
+      "at": "2026-11-05T06:56:26.436Z",
       "data": {
         "status": 404,
-        "finalUrl": "https://nyktos.tech/ac-nonexistent-bvsnv4f2na",
+        "finalUrl": "https://nyktos.tech/ac-nonexistent-eotfrrqasj",
         "redirectCount": 0,
         "headers": {
           "content-type": "text/html; charset=utf-8",
@@ -775,7 +775,7 @@
       "id": "ev-0008",
       "kind": "http-response",
       "target": "https://nyktos.tech/.env.local",
-      "at": "2026-11-03T03:29:02.121Z",
+      "at": "2026-11-05T06:56:26.481Z",
       "data": {
         "status": 404,
         "finalUrl": "https://nyktos.tech/.env.local",
@@ -828,7 +828,7 @@
       "id": "ev-0009",
       "kind": "http-response",
       "target": "https://nyktos.tech/.env.production",
-      "at": "2026-11-03T03:29:02.166Z",
+      "at": "2026-11-05T06:56:26.525Z",
       "data": {
         "status": 404,
         "finalUrl": "https://nyktos.tech/.env.production",
@@ -881,7 +881,7 @@
       "id": "ev-0010",
       "kind": "http-response",
       "target": "https://nyktos.tech/.env.bak",
-      "at": "2026-11-03T03:29:02.234Z",
+      "at": "2026-11-05T06:56:26.557Z",
       "data": {
         "status": 404,
         "finalUrl": "https://nyktos.tech/.env.bak",
@@ -934,7 +934,7 @@
       "id": "ev-0011",
       "kind": "http-response",
       "target": "https://nyktos.tech/.git/config",
-      "at": "2026-11-03T03:29:02.275Z",
+      "at": "2026-11-05T06:56:26.582Z",
       "data": {
         "status": 404,
         "finalUrl": "https://nyktos.tech/.git/config",
@@ -987,7 +987,7 @@
       "id": "ev-0012",
       "kind": "content-scan",
       "target": "https://nyktos.tech/",
-      "at": "2026-11-03T03:29:02.357Z",
+      "at": "2026-11-05T06:56:27.022Z",
       "data": {
         "asset": "(inline root document)",
         "inline": true,
@@ -1000,7 +1000,7 @@
       "id": "ev-0013",
       "kind": "content-scan",
       "target": "https://nyktos.tech/_next/static/chunks/fd9d1056-42f38cc8ad733ab8.js",
-      "at": "2026-11-03T03:29:02.357Z",
+      "at": "2026-11-05T06:56:27.022Z",
       "data": {
         "asset": "https://nyktos.tech/_next/static/chunks/fd9d1056-42f38cc8ad733ab8.js",
         "inline": false,
@@ -1013,7 +1013,7 @@
       "id": "ev-0014",
       "kind": "content-scan",
       "target": "https://nyktos.tech/_next/static/chunks/117-620302b454086ac6.js",
-      "at": "2026-11-03T03:29:02.357Z",
+      "at": "2026-11-05T06:56:27.022Z",
       "data": {
         "asset": "https://nyktos.tech/_next/static/chunks/117-620302b454086ac6.js",
         "inline": false,
@@ -1026,7 +1026,7 @@
       "id": "ev-0015",
       "kind": "content-scan",
       "target": "https://nyktos.tech/_next/static/chunks/main-app-2dcde4753ea0d175.js",
-      "at": "2026-11-03T03:29:02.357Z",
+      "at": "2026-11-05T06:56:27.022Z",
       "data": {
         "asset": "https://nyktos.tech/_next/static/chunks/main-app-2dcde4753ea0d175.js",
         "inline": false,
@@ -1039,7 +1039,7 @@
       "id": "ev-0016",
       "kind": "cve-snapshot",
       "target": "https://nyktos.tech/",
-      "at": "2026-11-03T03:29:02.508Z",
+      "at": "2026-11-05T06:56:27.179Z",
       "data": {
         "snapshotVersion": "nvd-2026-10-28",
         "source": "NVD API 2.0 (services.nvd.nist.gov), verified pull 2026-10-28",
@@ -1050,7 +1050,7 @@
       "id": "ev-0017",
       "kind": "dns",
       "target": "nyktos.tech",
-      "at": "2026-11-03T03:29:02.870Z",
+      "at": "2026-11-05T06:56:27.673Z",
       "data": {
         "query": "nyktos.tech TXT",
         "status": "ok",
@@ -1063,7 +1063,7 @@
       "id": "ev-0018",
       "kind": "dns",
       "target": "_dmarc.nyktos.tech",
-      "at": "2026-11-03T03:29:02.889Z",
+      "at": "2026-11-05T06:56:27.685Z",
       "data": {
         "query": "_dmarc.nyktos.tech TXT",
         "status": "ok",
@@ -1076,7 +1076,7 @@
       "id": "ev-0019",
       "kind": "http-response",
       "target": "https://nyktos.tech/",
-      "at": "2026-11-03T03:29:03.043Z",
+      "at": "2026-11-05T06:56:27.796Z",
       "data": {
         "status": 403,
         "finalUrl": "https://nyktos.tech/",
@@ -1104,7 +1104,7 @@
           "x-vercel-mitigated"
         ],
         "setCookies": [],
-        "bodyBytes": 41817,
+        "bodyBytes": 25878,
         "truncated": false
       }
     },
@@ -1112,7 +1112,7 @@
       "id": "ev-0020",
       "kind": "http-response",
       "target": "http://nyktos.tech/",
-      "at": "2026-11-03T03:29:03.117Z",
+      "at": "2026-11-05T06:56:27.844Z",
       "data": {
         "status": 308,
         "finalUrl": "http://nyktos.tech/",
@@ -1191,10 +1191,10 @@
   "stamp": {
     "scannerVersion": "0.1.0",
     "rulesVersion": "1.1.0",
-    "provider": "gemini",
-    "modelId": "gemini-3.5-flash-lite",
+    "provider": "meta",
+    "modelId": "muse-spark-1.3",
     "modelConfigured": true,
-    "timestamp": "2026-11-03T03:29:03.361Z",
+    "timestamp": "2026-11-05T06:56:28.167Z",
     "target": "https://nyktos.tech/",
     "origin": "public",
     "authorizationState": "attested",
@@ -1210,23 +1210,23 @@
   },
   "auditLog": [
     {
-      "at": "2026-11-03T03:29:00.223Z",
+      "at": "2026-11-05T06:56:24.611Z",
       "event": "scan-created",
       "target": "https://nyktos.tech/",
       "authorizationState": "attested",
       "verification": null,
       "scanPolicy": "restricted",
-      "ip": "87.81.233.17",
+      "ip": "87.81.233.16",
       "flow": "stateless"
     },
     {
-      "at": "2026-11-03T03:29:03.359Z",
+      "at": "2026-11-05T06:56:28.166Z",
       "event": "scan-complete",
       "target": "https://nyktos.tech/",
       "flow": "stateless"
     },
     {
-      "at": "2026-11-03T03:29:04.723Z",
+      "at": "2026-11-05T06:56:45.428Z",
       "event": "report-finalized",
       "auditorStatus": "annotated",
       "chainsRendered": 0,
@@ -1248,8 +1248,8 @@
   },
   "auditor": {
     "status": "annotated",
-    "provider": "gemini",
-    "modelId": "gemini-3.5-flash-lite",
+    "provider": "meta",
+    "modelId": "muse-spark-1.3",
     "reason": null,
     "calls": [
       {
