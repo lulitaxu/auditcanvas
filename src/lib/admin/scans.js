@@ -316,6 +316,7 @@ export async function runAdminStep(request, { db, cfg, session, now = Date.now()
     policy: derived.policy,
     authorizationState: derived.authorizationState,
     allowPrivate: derived.allowPrivate,
+    adminAuthorized: derived.origin === 'admin',
   });
   const results = await runGroup(ctx, group.id);
   const bundle = {

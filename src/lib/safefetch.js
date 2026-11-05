@@ -86,16 +86,18 @@ export async function resolveAndValidate(hostname, { allowPrivate = false } = {}
   return addresses;
 }
 
-function requestOnce(u, pinnedAddress, { method = 'GET', headers = {}, timeoutMs = 6000, sizeCapBytes = 512 * 1024 } = {}) {
+function requestOnce(u, pinnedAddress, { method = 'GET', headers = {}, body = null, timeoutMs = 6000, sizeCapBytes = 512 * 1024 } = {}) {
   return new Promise((resolve, reject) => {
     const isHttps = u.protocol === 'https:';
     const port = effectivePort(u);
     const transport = isHttps ? https : http;
+    const bodyBuf = body == null ? null : Buffer.isBuffer(body) ? body : Buffer.from(String(body), 'utf8');
     const reqHeaders = {
       'user-agent': 'AuditCanvas/0.1 (+security-audit; non-destructive)',
       accept: '*/*',
       ...headers,
       host: u.host,
+      ...(bodyBuf ? { 'content-length': String(bodyBuf.length) } : {}),
     };
     const options = {
       host: pinnedAddress,
@@ -175,6 +177,7 @@ function requestOnce(u, pinnedAddress, { method = 'GET', headers = {}, timeoutMs
       }
       fail(new SafeFetchError('network', `Request to ${u.hostname} failed: ${err.message}`));
     });
+    if (bodyBuf) req.write(bodyBuf);
     req.end();
   });
 }
@@ -185,6 +188,7 @@ export async function safeFetch(rawUrl, opts = {}) {
   const {
     method = 'GET',
     headers = {},
+    body = null,
     timeoutMs = 6000,
     sizeCapBytes = 512 * 1024,
     allowPrivate = false,
@@ -195,7 +199,7 @@ export async function safeFetch(rawUrl, opts = {}) {
   for (;;) {
     const addresses = await resolveAndValidate(current.hostname, { allowPrivate });
     const pinned = addresses[0].address;
-    const res = await requestOnce(current, pinned, { method, headers, timeoutMs, sizeCapBytes });
+    const res = await requestOnce(current, pinned, { method, headers, body, timeoutMs, sizeCapBytes });
     const location = res.headers['location'];
     if (!follow || !REDIRECT_STATUSES.has(res.status) || !location) {
       return { ...res, finalUrl: current.toString(), redirectCount: redirects, remoteAddress: pinned };

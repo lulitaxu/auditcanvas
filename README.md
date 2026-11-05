@@ -2,8 +2,9 @@
 
 Turn real security evidence into verified, understandable remediation.
 
-AuditCanvas scans a website with a deterministic engine (nine check
-groups, four outcomes: Pass / Finding / Inconclusive / Not assessed),
+AuditCanvas scans a website with a deterministic engine (ten check
+groups — nine public plus one admin-only authentication & injection
+group — four outcomes: Pass / Finding / Inconclusive / Not assessed),
 stores redacted evidence for every result, and — when configured — has a
 Muse Spark auditor explain, prioritize, and adversarially re-check the
 findings. The scanner decides what exists; the model decides what it
@@ -171,12 +172,12 @@ verification has been performed yet, and none is claimed.
 
 ## Current state (honest list)
 
-- **Built and verified:** the nine scanner groups, SSRF-safe fetch,
+- **Built and verified:** the ten scanner groups (nine public, one admin-only), SSRF-safe fetch,
   deterministic scoring, evidence graph canvas with Owner/Technical
   modes, Judge mode, DNS TXT ownership, chains validation +
   classification, refutation with deterministic assessment, both
   downloads, rescan + diff, and the NVD-verified CVE snapshot
-  (`nvd-2026-10-28`). Fixture suite 73/73; production build passes.
+  (`nvd-2026-10-28`). Fixture suite 165/165 (plus admin suite 97/97); production build passes.
 - **Auditor layer is wired, live-model verification is pending.** All
   three Muse Spark call sites, the report validator, and the
   engine-only fallback are implemented; until `META_API_KEY` /

@@ -41,13 +41,26 @@ const VULN_HTML = `<!doctype html><html><head><title>Fixture: vulnerable</title>
 <script src="/vendor/jquery-3.4.1.min.js"></script>
 <script src="/vendor/lodash-4.17.15.min.js"></script>
 <script src="/app.js"></script>
-</head><body><h1>Vulnerable fixture</h1><img src="http://127.0.0.1/pixel.png" alt=""></body></html>`;
+</head><body><h1>Vulnerable fixture</h1><img src="http://127.0.0.1/pixel.png" alt="">
+<form action="/search" method="get"><input type="text" name="q"><input type="submit" value="Search"></form>
+</body></html>`;
 
 const HARDENED_HTML = `<!doctype html><html><head><title>Fixture: hardened</title>
 <script src="/vendor/jquery-3.7.1.min.js"></script>
 <script src="/vendor/lodash-4.17.23.min.js"></script>
 <script src="/app.js"></script>
-</head><body><h1>Hardened fixture</h1></body></html>`;
+</head><body><h1>Hardened fixture</h1>
+<form action="/search" method="get"><input type="text" name="q"><input type="submit" value="Search"></form>
+</body></html>`;
+
+// Auth-group fixture material (2026-11-05): a Grafana login surface is
+// simulated on both origins. The vulnerable origin still accepts the
+// documented factory default admin/admin; the hardened origin's admin
+// password has been rotated, so the same single attempt is refused.
+const GRAFANA_LOGIN_HTML =
+  '<!doctype html><html><head><title>Grafana</title></head><body><h1>Welcome to Grafana</h1><form method="post" action="/login"><input name="user"><input type="password" name="password"></form></body></html>';
+const MYSQL_ERROR_BODY =
+  "You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ''' at line 1";
 
 // The vulnerable fixture's own first-party bundle: every anchored
 // secret pattern planted exactly once, plus a Firebase config whose
@@ -101,6 +114,53 @@ function vulnerableHandler(req, res) {
   const u = new URL(req.url, 'http://fixture.local');
   const p = u.pathname;
   const common = { 'content-type': 'text/html; charset=utf-8' };
+
+  // Auth-group fixtures: search (error-based SQLi signal), Grafana
+  // login (factory default still active), Tomcat Manager (default
+  // tomcat/tomcat still active).
+  if (p === '/search') {
+    const q = u.searchParams.get('q') || '';
+    if (q.includes("'")) {
+      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+      res.end(MYSQL_ERROR_BODY);
+    } else {
+      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+      res.end(`<!doctype html><html><body><h1>Search results</h1><p>Results for ${q}</p></body></html>`);
+    }
+    return;
+  }
+  if (p === '/login') {
+    if (req.method === 'POST') {
+      let raw = '';
+      req.on('data', (c) => { raw += c; });
+      req.on('end', () => {
+        let creds = {};
+        try { creds = JSON.parse(raw || '{}'); } catch { creds = {}; }
+        if (creds.user === 'admin' && creds.password === 'admin') {
+          res.writeHead(200, { 'content-type': 'application/json', 'set-cookie': ['grafana_session=fixturevalue; Path=/; HttpOnly'] });
+          res.end('{"message":"Logged in"}');
+        } else {
+          res.writeHead(401, { 'content-type': 'application/json' });
+          res.end('{"message":"Invalid username or password"}');
+        }
+      });
+      return;
+    }
+    res.writeHead(200, common);
+    res.end(GRAFANA_LOGIN_HTML);
+    return;
+  }
+  if (p === '/manager/html') {
+    const expected = 'Basic ' + Buffer.from('tomcat:tomcat').toString('base64');
+    if (req.headers.authorization === expected) {
+      res.writeHead(200, common);
+      res.end('<!doctype html><html><head><title>Tomcat Manager</title></head><body><h1>Tomcat Web Application Manager</h1></body></html>');
+    } else {
+      res.writeHead(401, { 'content-type': 'text/html; charset=utf-8', 'www-authenticate': 'Basic realm="Tomcat Manager Application"' });
+      res.end('<!doctype html><html><body><h1>401 Unauthorized</h1><p>Tomcat Manager</p></body></html>');
+    }
+    return;
+  }
 
   if (p === '/vendor/jquery-3.4.1.min.js' || p === '/vendor/lodash-4.17.15.min.js' || p.startsWith('/vendor/')) {
     res.writeHead(200, { 'content-type': 'application/javascript' });
@@ -170,6 +230,28 @@ function vulnerableHandler(req, res) {
 function hardenedHandler(req, res) {
   const u = new URL(req.url, 'http://fixture.local');
   const p = u.pathname;
+  // Auth-group fixtures: the search parameter is handled safely (a
+  // quote is just a character), and the Grafana default was rotated.
+  if (p === '/search') {
+    const q = u.searchParams.get('q') || '';
+    res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+    res.end(`<!doctype html><html><body><h1>Search results</h1><p>No results found.</p></body></html>`);
+    return;
+  }
+  if (p === '/login') {
+    if (req.method === 'POST') {
+      let raw = '';
+      req.on('data', (c) => { raw += c; });
+      req.on('end', () => {
+        res.writeHead(401, { 'content-type': 'application/json' });
+        res.end('{"message":"Invalid username or password"}');
+      });
+      return;
+    }
+    res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+    res.end(GRAFANA_LOGIN_HTML);
+    return;
+  }
   if (p === '/') {
     res.writeHead(200, {
       'content-type': 'text/html; charset=utf-8',

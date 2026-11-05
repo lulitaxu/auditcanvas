@@ -570,8 +570,8 @@ export async function runExposure(ctx) {
             title: 'Administration sign-in surface is served at /admin',
             detail: redactDetail(
               signed
-                ? '[reason:presence-only] An administration sign-in page is served at /admin. Its presence is not itself a vulnerability, and this scan does not attempt sign-in, credential guessing, or authorization bypass, so whether the surface is properly protected is not assessed by this check. Confirm it requires strong authentication and is not reachable from networks that do not need it.'
-                : '[reason:presence-only] A page is served at /admin with HTTP 200. Its presence is not itself a vulnerability, and this scan does not attempt sign-in, credential guessing, or authorization bypass, so whether the surface is properly protected is not assessed by this check. Confirm it requires strong authentication and is not reachable from networks that do not need it.'
+                ? '[reason:presence-only] An administration sign-in page is served at /admin. Its presence is not itself a vulnerability, and this check does not attempt sign-in, credential guessing, or authorization bypass, so whether the surface is properly protected is not assessed by this check. Confirm it requires strong authentication and is not reachable from networks that do not need it.'
+                : '[reason:presence-only] A page is served at /admin with HTTP 200. Its presence is not itself a vulnerability, and this check does not attempt sign-in, credential guessing, or authorization bypass, so whether the surface is properly protected is not assessed by this check. Confirm it requires strong authentication and is not reachable from networks that do not need it.'
             ),
             evidenceIds: evIds,
           })
@@ -584,8 +584,8 @@ export async function runExposure(ctx) {
             title: 'Debug surface is served at /debug',
             detail: redactDetail(
               dbg
-                ? `[reason:presence-only] An interactive framework debug page (${dbg[0]}) is served at /debug. Its presence is not itself a vulnerability, and this scan does not interact with it, so whether it is inert in production is not assessed by this check. Confirm debug tooling is disabled in production builds.`
-                : '[reason:presence-only] A page is served at /debug with HTTP 200. Its presence is not itself a vulnerability, and this scan does not interact with it, so whether it is inert in production is not assessed by this check. Confirm debug tooling is disabled in production builds.'
+                ? `[reason:presence-only] An interactive framework debug page (${dbg[0]}) is served at /debug. Its presence is not itself a vulnerability, and this check does not interact with it, so whether it is inert in production is not assessed by this check. Confirm debug tooling is disabled in production builds.`
+                : '[reason:presence-only] A page is served at /debug with HTTP 200. Its presence is not itself a vulnerability, and this check does not interact with it, so whether it is inert in production is not assessed by this check. Confirm debug tooling is disabled in production builds.'
             ),
             evidenceIds: evIds,
           })

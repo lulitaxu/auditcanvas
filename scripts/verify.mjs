@@ -194,7 +194,7 @@ if (!process.env.AC_NO_HTTPS) {
 {
   const { results: rs } = await scan(`http://127.0.0.2/`, { dnsTxt: dnsValid });
   const found = findingsOf(rs);
-  check('hardened: ZERO findings across all nine groups', found.length === 0, JSON.stringify(found.map((f) => f.checkId)));
+  check('hardened: ZERO findings across all ten groups', found.length === 0, JSON.stringify(found.map((f) => f.checkId)));
   check('hardened: current jQuery (3.7.1) produces no CVE finding', !rs.some((r) => r.group === 'stack' && r.outcome === 'finding'));
   check('hardened: valid SPF/DMARC pass', byId(rs, 'email.spf')?.outcome === 'pass' && byId(rs, 'email.dmarc')?.outcome === 'pass');
 }
@@ -448,7 +448,7 @@ const corsProposal = (extraNodes = []) => ({
     policyForTarget(demoUrl, {}).policy.name === 'restricted');
   const demoDescriptor = startScanDescriptor({ url: demoUrl.toString(), attested: true, ip: 'verify-stateless', selfOrigin: 'https://auditcanvas.vercel.app' });
   check('descriptor: start issues the full-policy descriptor for the seeded demo',
-    demoDescriptor.scanPolicy === 'full' && demoDescriptor.groups.length === 9 && typeof demoDescriptor.scanId === 'string');
+    demoDescriptor.scanPolicy === 'full' && demoDescriptor.groups.length === 10 && typeof demoDescriptor.scanId === 'string');
 
   // STATELESS ASSEMBLY — per-group steps in fresh contexts, assembled
   // server-side, must reproduce the monolithic scan's findings.
@@ -915,6 +915,62 @@ const corsProposal = (extraNodes = []) => ({
     validateCheckResult(wellFormed).length === 0, JSON.stringify(validateCheckResult(wellFormed)));
   check('catalog: a cross-check findingId (f-exposure-env) is rejected',
     validateCheckResult({ ...wellFormed, findingId: 'f-exposure-env' }).length > 0);
+}
+
+// --- auth group (admin-only, 2026-11-05 addendum) ---
+// The group self-gates on ctx.adminAuthorized: public/verified scans
+// get two Not assessed results and ZERO requests; admin contexts get
+// the bounded probes (one single-quote probe per discovered GET form
+// parameter, one factory-default attempt per fingerprinted product).
+{
+  const { isCatalogCheck: isCat } = await import('../src/lib/evidence.js');
+  async function authScan(baseUrl, adminAuthorized) {
+    const ctx = createScanContext({
+      baseUrl,
+      policy: { ...POLICIES.full },
+      authorizationState: adminAuthorized ? 'admin' : 'verified',
+      allowPrivate: true,
+      dnsTxtFn: dnsMissing,
+      adminAuthorized,
+    });
+    const rs = await runGroup(ctx, 'auth');
+    return { rs, evidence: ctx.evidence.items, requests: ctx.requests };
+  }
+  const byCheck = (rs, id) => rs.find((r) => r.checkId === id);
+
+  const gated = await authScan('http://127.0.0.1/', false);
+  check('auth: without an admin grant both checks are Not assessed [admin-only]',
+    byCheck(gated.rs, 'auth.sqli-error')?.outcome === 'not-assessed'
+    && byCheck(gated.rs, 'auth.default-creds')?.outcome === 'not-assessed'
+    && byCheck(gated.rs, 'auth.sqli-error')?.detail.startsWith('[reason:admin-only]'),
+    JSON.stringify(gated.rs));
+  check('auth: the gated group makes ZERO requests', gated.requests.length === 0, `requests=${gated.requests.length}`);
+
+  const va = await authScan('http://127.0.0.1/', true);
+  check('auth: vulnerable fixture single-quote probe is a HIGH sqli-error finding',
+    byCheck(va.rs, 'auth.sqli-error')?.outcome === 'finding' && byCheck(va.rs, 'auth.sqli-error')?.severity === 'high',
+    JSON.stringify(byCheck(va.rs, 'auth.sqli-error')));
+  check('auth: vulnerable fixture factory defaults accepted (Grafana + Tomcat) is a HIGH finding',
+    byCheck(va.rs, 'auth.default-creds')?.outcome === 'finding' && byCheck(va.rs, 'auth.default-creds')?.severity === 'high'
+    && /Grafana/.test(byCheck(va.rs, 'auth.default-creds')?.detail || '')
+    && /Tomcat/.test(byCheck(va.rs, 'auth.default-creds')?.detail || ''),
+    JSON.stringify(byCheck(va.rs, 'auth.default-creds')));
+  const loginReqs = va.requests.filter((r) => r.url === 'http://127.0.0.1/login').length;
+  const mgrReqs = va.requests.filter((r) => r.url === 'http://127.0.0.1/manager/html').length;
+  check('auth: credential verification is bounded (fingerprint + exactly one attempt per product)',
+    loginReqs === 2 && mgrReqs === 2, `login=${loginReqs} manager=${mgrReqs}`);
+  check('auth: every evidence reference resolves', unresolvedEvidenceIds(va.rs, va.evidence).length === 0);
+  check('auth: no credential material in evidence (no Basic blob, no Authorization value)',
+    !JSON.stringify(va.evidence).includes('dG9tY2F0OnRvbWNhdA') && !/authorization\s*[:=]/i.test(JSON.stringify(va.evidence)));
+
+  const ha = await authScan('http://127.0.0.2/', true);
+  check('auth: hardened fixture probes pass (SQL handled, Grafana default rotated)',
+    byCheck(ha.rs, 'auth.sqli-error')?.outcome === 'pass' && byCheck(ha.rs, 'auth.default-creds')?.outcome === 'pass'
+    && findingsOf(ha.rs).length === 0,
+    JSON.stringify(ha.rs));
+
+  check('catalog: auth checks are admitted, a brute-force check name is NOT',
+    isCat('auth', 'sqli-error') === true && isCat('auth', 'default-creds') === true && isCat('auth', 'brute-force') === false);
 }
 
 for (const s of servers) {

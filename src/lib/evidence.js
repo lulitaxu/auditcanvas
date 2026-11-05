@@ -266,6 +266,10 @@ export const CHECK_CATALOG = Object.freeze({
     exact: Object.freeze(['mixed-content', 'https-upgrade', 'https-upgrade-missing', 'open-redirect', 'group-error']),
     patterns: Object.freeze([]),
   }),
+  auth: Object.freeze({
+    exact: Object.freeze(['sqli-error', 'default-creds', 'group-error']),
+    patterns: Object.freeze([]),
+  }),
 });
 
 export function isCatalogCheck(group, check) {

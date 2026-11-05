@@ -99,7 +99,7 @@ export function policyForTarget(url, { attested = false, verified = false, selfO
   };
 }
 
-export function createScanContext({ baseUrl, policy, authorizationState, allowPrivate = false, dnsTxtFn = null }) {
+export function createScanContext({ baseUrl, policy, authorizationState, allowPrivate = false, dnsTxtFn = null, adminAuthorized = false }) {
   const base = new URL(baseUrl);
   const evidence = createEvidenceStore();
   const startedAt = Date.now();
@@ -107,6 +107,13 @@ export function createScanContext({ baseUrl, policy, authorizationState, allowPr
     base,
     policy,
     authorizationState,
+    // True only when this context was created under a validated admin
+    // scan grant (src/lib/admin/scans.js). Deliberately separate from
+    // authorizationState: an admin scan of a demo or DNS-verified
+    // target keeps that stronger 'verified' label, but the operator
+    // grant is still what authorizes the admin-only auth check group.
+    // Public routes never set this.
+    adminAuthorized: Boolean(adminAuthorized),
     allowPrivate,
     evidence,
     requests: [], // audit trail of what we actually fetched (redacted)

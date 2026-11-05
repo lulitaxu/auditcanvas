@@ -109,10 +109,28 @@ update public.admin_sessions set revoked_at = now() where revoked_at is null;
 
 ## What the panel is (and is not)
 
-- Full scans mean the existing full **non-destructive** check set.
-  The panel cannot exploit, bypass authentication, guess
-  credentials, submit forms, reach private/loopback targets, or act
-  as a fetch proxy. The SSRF rules apply unchanged.
+- Full scans mean the full **non-destructive** check set, plus one
+  admin-only check group (Authentication & injection) that runs
+  solely under a validated admin scan grant and is Not assessed in
+  every other scan. That group is detection, never exploitation,
+  and it is bounded by construction:
+  - *Error-based SQL injection detection:* for each GET form
+    parameter discovered on the landing page (max 3), one benign
+    baseline request and one probe with a single quote appended. A
+    finding requires a database error signature in the probe that
+    the baseline lacks. Nothing is extracted; no other payloads
+    are sent.
+  - *Factory-default verification:* only for products fingerprinted
+    on the target that ship with a documented factory default
+    (currently Grafana, admin/admin, and the Apache Tomcat
+    Manager, tomcat/tomcat). Exactly one attempt per product with
+    that one documented default, then it stops either way; the
+    response is the whole test and no authenticated session is
+    kept or used. No wordlists, no brute force, and generic login
+    forms are never guessed at.
+- Beyond that group the panel cannot exploit, bypass
+  authentication, reach private/loopback targets, or act as a
+  fetch proxy. The SSRF rules apply unchanged.
 - Admin scans of unverified targets are labeled
   `authorizationState: 'admin'` — never 'verified' — in the UI, the
   report, the stamp, and the downloads.

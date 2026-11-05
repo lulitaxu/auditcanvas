@@ -1,6 +1,6 @@
 // Scanner registry: the eight frozen check groups (SPEC.md) + exposure
-// (SPEC addendum 2026-10-29). No new groups may be added during the
-// 9-day build.
+// (SPEC addendum 2026-10-29) + auth (post-submission addendum
+// 2026-11-05: admin-only, self-gating — see scanner/auth.js).
 import { runHeaders } from './headers.js';
 import { runTls } from './tls.js';
 import { runCookies } from './cookies.js';
@@ -10,6 +10,7 @@ import { runExposure } from './exposure.js';
 import { runStack } from './stack.js';
 import { runEmail } from './email.js';
 import { runRedirects } from './redirects.js';
+import { runAuth } from './auth.js';
 
 export const GROUPS = [
   { id: 'headers', name: 'Security headers', run: runHeaders },
@@ -21,6 +22,7 @@ export const GROUPS = [
   { id: 'stack', name: 'Client stack & CVEs', run: runStack },
   { id: 'email', name: 'Email posture (SPF/DMARC)', run: runEmail },
   { id: 'redirects', name: 'Redirects & mixed content', run: runRedirects },
+  { id: 'auth', name: 'Authentication & injection (admin)', run: runAuth },
 ];
 
 export function groupById(id) {

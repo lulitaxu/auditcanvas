@@ -510,3 +510,34 @@ no-store):
   any admin field, and the admin routes derive policy only from the
   database-backed grant; neither surface can borrow the other's
   authority.
+
+## Addendum (2026-11-05): admin-only auth check group
+
+Post-submission addition, at the founder's direction. A tenth check
+group, Authentication & injection (`auth`), is registered for every
+scan so report assembly stays uniform, but it self-gates on a flag
+only the admin step route can set from a validated grant
+(`ctx.adminAuthorized`). In every non-admin scan it returns Not
+assessed for both checks and makes zero requests; the "cannot guess
+credentials / submit forms" line in the 2026-10-29 addendum above
+described the panel before this group existed and is superseded,
+for admin scans only, by the bounded scope below. Public and
+verified scans are unchanged.
+
+- `auth.sqli-error` — error-based SQL injection detection. GET form
+  parameters discovered on the landing page only (max 3 injection
+  points): one benign baseline value, one probe with a single quote
+  appended. A finding (high) requires a database error signature in
+  the probe response absent from the baseline. No extraction, no
+  further payloads.
+- `auth.default-creds` — factory-default verification for
+  fingerprinted products with a documented factory default:
+  Grafana (admin/admin, one JSON login attempt) and Apache Tomcat
+  Manager (tomcat/tomcat, one Basic-auth attempt). One attempt per
+  product, then stop either way; the response is the whole test and
+  no session is retained or used. No wordlists, no brute force, no
+  attempts on unfingerprinted or generic login forms.
+- Fixture coverage lives in scripts/verify.mjs: the gate makes zero
+  requests, the vulnerable fixture produces both findings, the
+  hardened fixture passes both checks, and per-product request
+  counts prove the single-attempt bound.

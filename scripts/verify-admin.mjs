@@ -680,8 +680,8 @@ let demoScanId;
   }
   check('flow: every group step returns a verifiable signed bundle', !stepError, stepError);
   const runAfterSteps = await getAdminRun(db, demoScanId);
-  check('flow: completed_groups is a set (9 unique) while step_attempts counts retries (10)',
-    runAfterSteps.completedGroups.length === 9 && runAfterSteps.stepAttempts === 10,
+  check('flow: completed_groups is a set (10 unique) while step_attempts counts retries (11)',
+    runAfterSteps.completedGroups.length === 10 && runAfterSteps.stepAttempts === 11,
     `groups ${runAfterSteps.completedGroups.length}, attempts ${runAfterSteps.stepAttempts}`);
 
   const finRes = await finalizePOST(

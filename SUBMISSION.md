@@ -246,6 +246,27 @@ Dependency-free ZIP writer for the fix pack.
   annotated on both passes).
   No sample report in this project is hand-assembled.
 
+### Post-submission change (Nov 5, 2026 — NOT part of the judged submission)
+
+After the Nov 4 submission, a tenth check group was added to the
+codebase at the founder's direction: **Authentication & injection**,
+which runs only inside the operator admin panel under a validated
+admin scan grant and is Not assessed (with zero requests made) in
+every public, verified, and Judge-mode scan. It performs bounded
+detection only: error-based SQL injection probing (one benign
+baseline and one single-quote probe per GET form parameter
+discovered on the landing page, max 3, a finding only on a database
+error signature the baseline lacks, nothing extracted) and
+factory-default verification for fingerprinted products with a
+documented default (Grafana admin/admin, Apache Tomcat Manager
+tomcat/tomcat — exactly one attempt per product, no wordlists, no
+brute force, no session retained). It was not part of the submitted
+build, is not claimed for judging, and is documented in SPEC.md
+(addendum 2026-11-05) and docs/ADMIN.md. The fixture suite now
+passes 165/165, including the group's gate, positive, and negative
+assertions; the 156/156 figures above describe the submitted build
+as verified during the hackathon window.
+
 ---
 
 ## Fill-in order at submission time
