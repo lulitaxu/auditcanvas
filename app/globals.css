@@ -375,6 +375,15 @@ svg.graph .edge.chain-conditional { stroke: var(--medium); stroke-width: 2.5; st
 }
 .admin-form { display: flex; flex-direction: column; gap: 14px; margin-top: 16px; }
 .admin-form .admin-input { width: 100%; flex: none; }
+.password-field { position: relative; }
+.password-field .admin-input { padding-right: 54px; }
+.password-toggle {
+  position: absolute; top: 0; right: 0; height: 100%; width: 46px;
+  display: flex; align-items: center; justify-content: center;
+  background: none; border: none; color: var(--faint); cursor: pointer; padding: 0;
+}
+.password-toggle:hover { color: var(--ink); }
+.password-toggle:focus-visible { outline: 1px solid var(--accent); outline-offset: -1px; color: var(--ink); }
 
 .admin-label {
   display: block;
